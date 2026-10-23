@@ -24,7 +24,7 @@ class IncidentCreate(BaseModel):
     service: str | None = None
     occurred_at: datetime | None = None
     detected_at: datetime | None = None
-    severity: str | None = None
+    user_severity: str | None = None
     metadata: dict[str, Any] = Field(default_factory=dict)
 
 

@@ -10,12 +10,12 @@ def test_create_accepts_fr1_fields() -> None:
         service="payment-api",
         occurred_at="2026-10-23T02:50:00Z",
         detected_at="2026-10-23T03:00:00Z",
-        severity="high",
+        user_severity="high",
         metadata={"region": "au"},
     )
 
     assert incident.service == "payment-api"
-    assert incident.severity == "high"
+    assert incident.user_severity == "high"
 
 
 def test_create_rejects_an_empty_title() -> None:
@@ -27,3 +27,4 @@ def test_request_model_does_not_carry_metrics() -> None:
     assert "cpu_usage" not in IncidentCreate.model_fields
     assert "memory_usage" not in IncidentCreate.model_fields
     assert "status_code" not in IncidentCreate.model_fields
+    assert "severity" not in IncidentCreate.model_fields
