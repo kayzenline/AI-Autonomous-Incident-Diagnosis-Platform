@@ -5,9 +5,10 @@ Every error uses the same JSON object: error_code, message, and details.
 
 from collections.abc import Sequence
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 _STATUS_CODES = {
     400: "bad_request",
@@ -32,7 +33,10 @@ def error_payload(
 
 def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(RequestValidationError)
-    async def handle_validation_error(request: Request, exc: RequestValidationError) -> JSONResponse:
+    async def handle_validation_error(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
         del request
         details = [
             {
@@ -47,8 +51,8 @@ def register_exception_handlers(app: FastAPI) -> None:
             content=error_payload("validation_error", "Request validation failed.", details),
         )
 
-    @app.exception_handler(HTTPException)
-    async def handle_http_exception(request: Request, exc: HTTPException) -> JSONResponse:
+    @app.exception_handler(StarletteHTTPException)
+    async def handle_http_exception(request: Request, exc: StarletteHTTPException) -> JSONResponse:
         del request
         code = _STATUS_CODES.get(exc.status_code, "http_error")
         message = exc.detail if isinstance(exc.detail, str) else "Request failed."
