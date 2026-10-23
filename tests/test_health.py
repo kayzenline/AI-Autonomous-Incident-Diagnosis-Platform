@@ -17,6 +17,14 @@ def test_openapi_docs_are_available() -> None:
     assert response.status_code == 200
 
 
+def test_method_not_allowed_keeps_the_allow_header() -> None:
+    response = client.post("/health")
+
+    assert response.status_code == 405
+    assert response.json()["error_code"] == "method_not_allowed"
+    assert "GET" in response.headers["allow"]
+
+
 def test_unknown_path_uses_the_error_body() -> None:
     response = client.get("/missing")
 
