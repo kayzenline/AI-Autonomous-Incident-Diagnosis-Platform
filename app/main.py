@@ -1,17 +1,20 @@
 from fastapi import FastAPI
 
+from app.api.errors import register_exception_handlers
+
 app = FastAPI(
-    title="AgentOps - Incident Diagnosis Platform (Version 0)",
-    description="Rule-based deterministic incident diagnosis backend",
+    title="AgentOps",
+    description="Read-only incident diagnosis API.",
     version="0.1.0",
 )
+register_exception_handlers(app)
 
 
 @app.get("/")
-def root():
+def root() -> dict[str, str]:
     return {"message": "AgentOps API is running"}
 
 
 @app.get("/health")
-def health_check():
+def health_check() -> dict[str, str]:
     return {"status": "ok", "version": "0.1.0"}
