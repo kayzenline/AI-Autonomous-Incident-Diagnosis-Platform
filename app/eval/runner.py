@@ -32,6 +32,9 @@ def build_report(scenarios: list[Scenario] | None = None) -> dict[str, Any]:
     ]
     faults = [case for case in cases if case["expected_verdict"] == "FAULT"]
     recalls = [case["evidence_recall"] for case in cases if case["evidence_recall"] is not None]
+    precisions = [
+        case["evidence_precision"] for case in cases if case["evidence_precision"] is not None
+    ]
     severities = [case["severity_hit"] for case in faults if case["severity_hit"] is not None]
     verdicts = ("FAULT", "NOT_A_FAULT", "UNKNOWN")
     return {
@@ -49,7 +52,7 @@ def build_report(scenarios: list[Scenario] | None = None) -> dict[str, Any]:
             for verdict in verdicts
         },
         "evidence_recall": _mean([float(value) for value in recalls]),
-        "evidence_precision": _mean([float(case["evidence_precision"]) for case in cases]),
+        "evidence_precision": _mean([float(value) for value in precisions]),
         "severity_accuracy": _rate(severities),
         "cases": cases,
     }
@@ -127,6 +130,7 @@ def _case(scenario: Scenario) -> dict[str, Any]:
     if expected.verdict == "FAULT":
         severity_hit = report.severity == expected.severity
     recall = evidence_recall(cited, expected.key_evidence_keys)
+    precision = evidence_precision(cited, expected.key_evidence_keys)
     return {
         "scenario_id": scenario.id,
         "holdout": scenario.holdout,
@@ -140,7 +144,7 @@ def _case(scenario: Scenario) -> dict[str, Any]:
         "top3_hit": top_hit(report, expected, limit=3),
         "severity_hit": severity_hit,
         "evidence_recall": None if recall is None else round(recall, 4),
-        "evidence_precision": round(evidence_precision(cited, expected.key_evidence_keys), 4),
+        "evidence_precision": None if precision is None else round(precision, 4),
     }
 
 

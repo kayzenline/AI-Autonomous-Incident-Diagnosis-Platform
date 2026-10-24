@@ -1,0 +1,140 @@
+# The decisive NXDOMAIN line is the 21st error in the default window, past the
+# 20-log page. A narrower time_range is required to see it.
+id: drilldown-truncated-dns
+title: "Gateway errors fill the first log page"
+service: gateway
+tags: [fault, drill_down, network]
+holdout: true
+incident:
+  title: "Gateway errors fill the first log page"
+  description: "Gateway is returning errors. The first page of error logs is cache noise."
+  service: gateway
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [gateway]
+  metrics_unavailable: false
+  metrics:
+    - service: gateway
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 25}
+    - service: gateway
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: gateway
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: gateway
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 400}
+    - service: gateway
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 3}
+    - service: gateway
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 10}
+  logs:
+    - service: gateway
+      at: 2026-10-23T02:46:00Z
+      level: ERROR
+      message: "cache lookup failed for session 1"
+    - service: gateway
+      at: 2026-10-23T02:47:00Z
+      level: ERROR
+      message: "cache lookup failed for session 2"
+    - service: gateway
+      at: 2026-10-23T02:48:00Z
+      level: ERROR
+      message: "cache lookup failed for session 3"
+    - service: gateway
+      at: 2026-10-23T02:49:00Z
+      level: ERROR
+      message: "cache lookup failed for session 4"
+    - service: gateway
+      at: 2026-10-23T02:50:00Z
+      level: ERROR
+      message: "cache lookup failed for session 5"
+    - service: gateway
+      at: 2026-10-23T02:51:00Z
+      level: ERROR
+      message: "cache lookup failed for session 6"
+    - service: gateway
+      at: 2026-10-23T02:52:00Z
+      level: ERROR
+      message: "cache lookup failed for session 7"
+    - service: gateway
+      at: 2026-10-23T02:53:00Z
+      level: ERROR
+      message: "cache lookup failed for session 8"
+    - service: gateway
+      at: 2026-10-23T02:54:00Z
+      level: ERROR
+      message: "cache lookup failed for session 9"
+    - service: gateway
+      at: 2026-10-23T02:55:00Z
+      level: ERROR
+      message: "cache lookup failed for session 10"
+    - service: gateway
+      at: 2026-10-23T02:56:00Z
+      level: ERROR
+      message: "cache lookup failed for session 11"
+    - service: gateway
+      at: 2026-10-23T02:57:00Z
+      level: ERROR
+      message: "cache lookup failed for session 12"
+    - service: gateway
+      at: 2026-10-23T02:58:00Z
+      level: ERROR
+      message: "cache lookup failed for session 13"
+    - service: gateway
+      at: 2026-10-23T02:59:00Z
+      level: ERROR
+      message: "cache lookup failed for session 14"
+    - service: gateway
+      at: 2026-10-23T03:00:00Z
+      level: ERROR
+      message: "cache lookup failed for session 15"
+    - service: gateway
+      at: 2026-10-23T03:01:00Z
+      level: ERROR
+      message: "cache lookup failed for session 16"
+    - service: gateway
+      at: 2026-10-23T03:02:00Z
+      level: ERROR
+      message: "cache lookup failed for session 17"
+    - service: gateway
+      at: 2026-10-23T03:03:00Z
+      level: ERROR
+      message: "cache lookup failed for session 18"
+    - service: gateway
+      at: 2026-10-23T03:04:00Z
+      level: ERROR
+      message: "cache lookup failed for session 19"
+    - service: gateway
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "cache lookup failed for session 20"
+    - service: gateway
+      at: 2026-10-23T03:08:00Z
+      level: ERROR
+      message: "NXDOMAIN for gateway.internal"
+      evidence_key: "log:late_nxdomain"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: gateway
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: NETWORK
+  cause: dns_failure
+  severity: medium
+  key_evidence_keys: ["log:late_nxdomain"]

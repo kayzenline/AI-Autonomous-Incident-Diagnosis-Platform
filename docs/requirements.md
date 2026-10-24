@@ -5,6 +5,7 @@
 > - **v2.1**：确立只读诊断、Scenario Simulator + 稳定证据键、Eval-first（M1 基线）、单进程异步 Run + SSE、证据账本与只读 Verifier、情景记忆 + 服务知识库（无程序性记忆）。
 > - **v2.2**：`cause` 改为封闭 id、`NOT_A_FAULT` / `UNKNOWN` 只出现在 `verdict`、幻觉率只统计模型第一次输出。
 > - **v2.3（当前）**：主结论改为 M4 Top-1 减 M3 Top-1、幻觉率与校验通过条件拆开、补齐 Top-1/Top-3 与证据精确率、删掉 `traffic_spike`、备选 cause 必须属于期望 category、M3 参数由代码生成、PR 门禁与夜间评测拆开、M1 分数写入文件、冻结题集、请求字段统一为 `user_severity`、注入文本只包裹不删除。实现时的行为见各节，未填数字见 §9。
+> - **精确率空集**：期望键和引用都为空时，证据精确率无定义，不进入平均。这修正了「没有引用时精确率为 0」对应当引用为空的 `NOT_A_FAULT` / `UNKNOWN` 的误罚。期望键非空但没有引用，仍为 0。
 
 ---
 
@@ -45,7 +46,7 @@
 
 **证据键**
 - 召回 = `|引用键 ∩ 期望键| / |期望键|`
-- 精确率 = `|引用键 ∩ 期望键| / |引用键|`。没有引用时精确率为 0。红鲱鱼键在账本里是合法引用，会进入分母。
+- 精确率 = `|引用键 ∩ 期望键| / |引用键|`。期望键和引用都为空时精确率无定义，不进入平均（与召回在期望键为空时相同）。期望键非空但没有引用时精确率为 0。有引用而期望键为空时精确率为 0。红鲱鱼键在账本里是合法引用，会进入分母。
 - 工具结果只带证据键和数据，不带 `relevant: true`。`ground_truth` 只有评分器能读。
 
 **引用的两个数**
@@ -70,6 +71,8 @@
 | 单次 Run 墙上时钟 | — | 上限 60 秒；超时即 `TIMED_OUT` |
 
 **基线公平性前提**：规则基线只能通过 `ToolPort` 取数，**不得读取 `ground_truth` 或场景定义**。规则由**不看答案**的方式编写（先写规则、冻结，再写/生成场景；或规则只依据通用阈值如 CPU>90%）。基线 Top-1 ≥ 90% 时，先加难场景（红鲱鱼、级联、证据不足）再比较。基线 Top-1 低于 30% 时，相对基线的涨幅只作记录。
+
+最初 23 题和规则基线在同一提交（`f1eba32`）进入仓库，git 历史不能证明规则先于这些答案冻结。规则使用通用阈值。`RULE_ORDER` 没有为了红鲱鱼误判重排，后加的多跳、下钻、冲突和噪声题也没有改这份顺序；那些题是对着已经在树上的规则写的。只扫事件服务、并用默认时间窗，拿不到多跳和下钻题的决定性证据键。规则 Top-1 因此留在约 0.87 以下，给 M3 / M4 留出空间。具体分数以 `evals/baselines/m1-rule.json` 为准。
 
 ---
 
@@ -183,7 +186,7 @@ Triage(代码) → Hypothesize(LLM) → Investigate(LLM 选工具，循环) → 
 
 ### FR-8 评测框架
 - 基准用例 = `incident + scenario_id + expected{category, cause, acceptable_alternatives, key_evidence_keys, verdict, severity}`。`cause` 与 `acceptable_alternatives` 都是 FR-5 的枚举 id，备选 cause 必须属于期望 `category`。期望 `verdict` 不是 `FAULT` 时，`category`、`cause`、`severity` 为空。评分比较报告 `severity` 与场景期望，不读 `user_severity`。
-- **证据键**：召回 = `|引用键 ∩ 期望键| / |期望键|`；精确率 = `|引用键 ∩ 期望键| / |引用键|`（没有引用时精确率为 0；红鲱鱼键是合法引用，进入分母）。工具结果只带证据键和数据。`ground_truth` 留在 `scenarios/*.yaml`，只有评分器读取。
+- **证据键**：召回 = `|引用键 ∩ 期望键| / |期望键|`（期望键为空则无定义，不进入平均）；精确率 = `|引用键 ∩ 期望键| / |引用键|`（期望键与引用都为空则无定义，不进入平均；期望键非空但没有引用时为 0；有引用而期望键为空时为 0；红鲱鱼键是合法引用，进入分母）。工具结果只带证据键和数据。`ground_truth` 留在 `scenarios/*.yaml`，只有评分器读取。
 - **每次 Pull Request 的门禁**（回放不保护 Prompt 质量，这些检查不跑真实模型的新诊断）：
   1. 单元测试；
   2. 规则基线；
@@ -262,7 +265,7 @@ GET  /v1/scenarios                         只返回 id、标题、服务、标�
 
 ### 4.3 Scenario Simulator
 - YAML：拓扑、指标时间序列、日志模板、变更记录、红鲱鱼、**证据键**、`ground_truth`。工具结果只带证据键和数据，不带 `relevant: true`。
-- 参数化生成扩充场景，生成的题可以练习。对外报告只用事先冻结的题集（见 FR-8）。初始场景：高 CPU（`cpu_saturation`）、内存泄漏、连接池耗尽、磁盘满、DNS、错误部署、级联超时、配置错误、流量突增（`verdict=NOT_A_FAULT`，`cause` 为空，不是 cause id）、证据不足（`verdict=UNKNOWN`）、误导性告警（本清单写明 `verdict=NOT_A_FAULT`；其他此类题在场景里写明 `NOT_A_FAULT` 或 `UNKNOWN`）、日志含注入文本（注入不改变该题的 `ground_truth`）。
+- 参数化生成扩充场景，生成的题可以练习。对外报告只用事先冻结的题集（见 FR-8）。初始场景：高 CPU（`cpu_saturation`）、内存泄漏、连接池耗尽、磁盘满、DNS、错误部署、级联超时、配置错误、流量突增（`verdict=NOT_A_FAULT`，`cause` 为空，不是 cause id）、证据不足（`verdict=UNKNOWN`）、误导性告警（本清单写明 `verdict=NOT_A_FAULT`；其他此类题在场景里写明 `NOT_A_FAULT` 或 `UNKNOWN`）、日志含注入文本（注入不改变该题的 `ground_truth`）。后加的冻结题覆盖多跳依赖（决定性证据在下游服务）、下钻参数（另一个 `service`，或比默认 20 行日志页更窄的时间窗）、同一轮工具结果里互相冲突的证据，以及健康主机上的噪声日志。这些题不把 `ground_truth` 放进 `ToolPort`，工具结果也不带 `relevant: true`。
 - 规则基线**不得**访问 `ground_truth`（由 `ToolPort` 隔离，`ground_truth` 只被评分器读取）。`GET /v1/scenarios` 不返回 `ground_truth`。
 
 ### 4.4 框架引入理由

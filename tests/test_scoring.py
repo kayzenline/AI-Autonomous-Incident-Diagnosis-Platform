@@ -50,8 +50,13 @@ def test_non_fault_skips_top_scores() -> None:
     report = DiagnosisReport(verdict=Verdict.NOT_A_FAULT)
 
     assert top_hit(report, expected, limit=1) is None
-    assert evidence_precision(set(), []) == 0
+    assert evidence_precision(set(), []) is None
     assert evidence_recall(set(), []) is None
+
+
+def test_empty_citation_is_zero_only_when_evidence_was_expected() -> None:
+    assert evidence_precision(set(), ["metric:cpu_high"]) == 0
+    assert evidence_precision({"log:false_disk_page"}, []) == 0
 
 
 def test_red_herring_key_lowers_precision() -> None:

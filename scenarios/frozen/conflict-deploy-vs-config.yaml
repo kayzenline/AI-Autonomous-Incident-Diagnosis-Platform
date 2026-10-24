@@ -1,0 +1,72 @@
+# A rollout and a later config push are both visible in one sweep.
+# Errors stay low until the config push. Frozen rule order still ranks the deploy first.
+id: conflict-deploy-vs-config
+title: "Billing errors after a rollout and a config push"
+service: billing
+tags: [fault, conflict, config, red_herring]
+holdout: true
+incident:
+  title: "Billing errors after a rollout and a config push"
+  description: "Billing started returning errors. A rollout and a config push both landed in the window."
+  service: billing
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: low
+world:
+  services: [billing]
+  metrics_unavailable: false
+  metrics:
+    - service: billing
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: billing
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: billing
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: billing
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 200}
+    - service: billing
+      metric: error_rate
+      evidence_key: "metric:error_rate_high"
+      points:
+        - {at: 2026-10-23T02:55:00Z, value: 1.0}
+        - {at: 2026-10-23T03:06:00Z, value: 36}
+    - service: billing
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 12}
+  logs:
+    - service: billing
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "failed to load config for the billing timeout"
+      evidence_key: "log:bad_config"
+  changes:
+    - service: billing
+      at: 2026-10-23T02:50:00Z
+      kind: deploy
+      summary: "rolled out billing 2.4.1"
+      evidence_key: "change:routine_deploy"
+    - service: billing
+      at: 2026-10-23T03:04:00Z
+      kind: config
+      summary: "updated the billing timeout flag"
+      evidence_key: "change:bad_config"
+  dependencies: []
+  databases: []
+  statuses:
+    - service: billing
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: CONFIG
+  cause: config_error
+  severity: high
+  key_evidence_keys: ["change:bad_config", "log:bad_config", "metric:error_rate_high"]

@@ -17,6 +17,11 @@
       "holdout": false
     },
     {
+      "id": "conflict-deploy-vs-config",
+      "sha256": "3b25c3e588f2fe5c82150e6ab3e88f2920f5ac080d5450f6d6b5c3f42d118c5c",
+      "holdout": true
+    },
+    {
       "id": "cpu-saturation-checkout",
       "sha256": "88f9b78830f527169bbdabb63afcde4eccdc0c3a8abdb1eeeac486e04c6df62d",
       "holdout": false
@@ -62,6 +67,16 @@
       "holdout": false
     },
     {
+      "id": "drilldown-payments-pool",
+      "sha256": "643cf903d5cb7bc44603cbf13790746689d3c11fba4da41336020953166a4d05",
+      "holdout": false
+    },
+    {
+      "id": "drilldown-truncated-dns",
+      "sha256": "ba8ee5018d59de78a0773d75d17379ddfcd53e8738978671b56048529f4d1dc0",
+      "holdout": true
+    },
+    {
       "id": "memory-injection",
       "sha256": "a08e82067343e06b9ab810bfce60eb9f08e7203dca91d2e6baf2ed6228919d02",
       "holdout": false
@@ -75,6 +90,21 @@
       "id": "misleading-disk-alert",
       "sha256": "0fc4787327a6979474d14a4c7b6863eb8fe761d652f8fa2e0e933e82b7b505f3",
       "holdout": true
+    },
+    {
+      "id": "multihop-checkout-payments-pool",
+      "sha256": "c0dc4e1c2ad1be2d312ba4b321b0df0d983e2ad5844f4fe5436d246158076c39",
+      "holdout": false
+    },
+    {
+      "id": "multihop-checkout-pricing-dns",
+      "sha256": "fb1ca90a978f7a4e65facdd620bf420a70c6f21ce13339c0fac8774c6737b82a",
+      "holdout": true
+    },
+    {
+      "id": "noisy-pool-warmup",
+      "sha256": "9ad2364d57b8e64e42d6cb7f72a0cddf098ee3be5de2b7db1abcda776d156e95",
+      "holdout": false
     },
     {
       "id": "normal-fluctuation",

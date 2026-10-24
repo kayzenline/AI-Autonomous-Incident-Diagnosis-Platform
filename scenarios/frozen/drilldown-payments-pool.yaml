@@ -1,0 +1,96 @@
+# Payments looks healthy from checkout's dependency check. The pool
+# observation is only on query_db_health(service=payments).
+id: drilldown-payments-pool
+title: "Checkout errors with a green payments check"
+service: checkout
+tags: [fault, drill_down, database]
+holdout: false
+incident:
+  title: "Checkout errors with a green payments check"
+  description: "Checkout error rate rose. The payments edge check is still green."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout, payments]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 28}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 35}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 18}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 1200}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 6}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: payments
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: payments
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 36}
+    - service: payments
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 21}
+    - service: payments
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 250}
+    - service: payments
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 3}
+    - service: payments
+      metric: db_connections
+      evidence_key: "metric:payments_db_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 97}
+  logs:
+    - service: payments
+      at: 2026-10-23T03:06:00Z
+      level: ERROR
+      message: "too many connections waiting on the primary"
+      evidence_key: "log:pool_exhausted"
+  changes: []
+  dependencies:
+    - service: checkout
+      name: payments
+      status: healthy
+      latency_ms: 40
+      evidence_key: "dep:payments_green"
+  databases:
+    - service: payments
+      connections_pct: 97
+      waiters: 30
+      evidence_key: "db:payments_pool"
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+    - service: payments
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DATABASE
+  cause: db_pool_exhausted
+  severity: high
+  key_evidence_keys: ["db:payments_pool", "metric:payments_db_high", "log:pool_exhausted"]
