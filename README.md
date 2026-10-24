@@ -2,6 +2,96 @@
 
 Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Persistence (M2) and the LLM agents (M3 and M4) are not started.
 
+## Architecture
+
+AgentOps uses a **hexagonal (ports-and-adapters) architecture** where the diagnosis runtime depends only on abstract ports (`ToolPort`, `LLMPort`, `ClockPort`, `MemoryPort`). Every conclusion in the final report must cite stable `evidence_keys` recorded in the run's **Evidence Ledger**, and `ground_truth` is strictly isolated to the evaluation scorer.
+
+```mermaid
+flowchart TB
+    subgraph Clients["Clients & Entrypoints"]
+        CLI["CLI / HTTP Client"]
+        EvalCLI["Eval Runner (python -m app.eval)"]
+    end
+
+    subgraph API["API & Service Layer (FastAPI)"]
+        REST["REST + SSE Endpoints (/health, /v1/scenarios, /v1/incidents, /v1/runs)"]
+        Exec["In-Process Asyncio Run Executor"]
+    end
+
+    subgraph Domain["Agent Runtime & Domain Core"]
+        direction TB
+        Triage["1. Triage (Code: service + default time window)"]
+        Hypo["2. Hypothesize (Candidate causes)"]
+        Investigate["3. Investigate Loop (Select read-only tools)"]
+        Verifier["4. Read-Only Verifier (Single-pass ledger & contradiction check)"]
+        Report["5. Structured Report (FAULT | NOT_A_FAULT | UNKNOWN)"]
+
+        Ledger["Evidence Ledger & Hypothesis Board"]
+        Guard["Budget & Guardrails (<=8 tool calls, 60s wall-clock, dedup)"]
+
+        Triage --> Hypo --> Investigate --> Verifier --> Report
+        Investigate <--> Ledger
+        Verifier --> Ledger
+        Guard -. "enforces limits" .-> Investigate
+    end
+
+    subgraph Modes["Controlled Experiment Modes"]
+        M1["M1: Frozen Rule Baseline"]
+        M3["M3: Single-Shot LLM (Code-swept evidence)"]
+        M4["M4: Autonomous Investigation Agent"]
+    end
+
+    subgraph Ports["Hexagonal Ports"]
+        ToolPort["ToolPort (6 Read-Only Tools + Redaction + Untrusted Wrap)"]
+        LLMPort["LLMPort (Async)"]
+        ClockPort["ClockPort (WallClock + ScenarioClock)"]
+        MemoryPort["MemoryPort (Episodic + Semantic, M6)"]
+    end
+
+    subgraph Adapters["Adapters & Storage"]
+        Sim["Scenario Simulator (YAML Topologies, Metrics, Logs, Changes)"]
+        Prod["Production / MCP Adapters (Prometheus, M8)"]
+        LLMProv["LLM Provider / Fake & Cassette Replay"]
+        PG["PostgreSQL + pgvector (Incidents, RunEvents, MemoryItems, M2/M6)"]
+    end
+
+    subgraph EvalBox["Evaluation & Fairness Isolation"]
+        Frozen["Frozen Scenarios (scenarios/frozen/*.yaml)"]
+        Scorer["Deterministic Scorer & Fairness Check (app/eval)"]
+    end
+
+    CLI -- "X-API-Key" --> REST --> Exec --> Domain
+    EvalCLI --> Scorer
+    EvalCLI --> Modes
+    Modes --> Domain
+
+    Domain --> ToolPort
+    Domain --> LLMPort
+    Domain --> ClockPort
+    Domain --> MemoryPort
+
+    ToolPort --> Sim
+    ToolPort -. "swap adapter" .-> Prod
+    LLMPort --> LLMProv
+    MemoryPort -.-> PG
+    Exec -.-> PG
+
+    Frozen -- "observable state only (no ground_truth)" --> Sim
+    Frozen -- "ground_truth + expected keys" --> Scorer
+    Report -- "hypotheses + cited evidence_keys" --> Scorer
+```
+
+### Read-Only Diagnostic Tools (`ToolPort`)
+
+| Tool | Input Schema | Purpose | Production Counterpart |
+| :--- | :--- | :--- | :--- |
+| `query_metrics` | `MetricsQuery` (`service`, `time_range`, `metric`) | Time-series metrics (`cpu`, `memory`, `disk`, `latency_p99`, `error_rate`, `db_connections`) | Prometheus / Datadog |
+| `search_logs` | `LogQuery` (`service`, `time_range`, `min_level`, `contains`, `offset`) | Paginated log search (max 20 lines/call, redacted & wrapped) | Grafana Loki / ELK |
+| `get_service_status` | `ServiceQuery` (`service`, `time_range`) | Instance health and restart status | Kubernetes API |
+| `get_recent_changes` | `ServiceQuery` (`service`, `time_range`) | Code deploys, rollbacks, and config flag changes in window | ArgoCD / GitHub Actions |
+| `get_dependency_health` | `ServiceQuery` (`service`, `time_range`) | Downstream service topology and dependency health | Service Mesh / APM |
+| `query_db_health` | `ServiceQuery` (`service`, `time_range`) | Connection pool usage, max connections, and queue depth | RDS / PgBouncer |
+
 ## Requirements
 
 Python 3.12 or newer.
