@@ -192,3 +192,26 @@ def test_manifest_hashes_cover_every_file() -> None:
 
     assert {row["id"] for row in manifest["scenarios"]} == {item.id for item in scenarios}
     assert all(len(row["sha256"]) == 64 for row in manifest["scenarios"])
+
+
+def test_frozen_incident_text_does_not_narrate_cause_or_herring() -> None:
+    scenarios = load_frozen_scenarios()
+    banned = {
+        *(cause.value for cause in Cause),
+        "herring",
+        "saturated",
+        "exhausted",
+        "nxdomain",
+        "rollout",
+        "deploy",
+        "config",
+        "pool",
+        "disk",
+        "memory",
+        "cpu",
+    }
+
+    for scenario in scenarios:
+        text = f"{scenario.incident.title} {scenario.incident.description}".casefold()
+        for token in banned:
+            assert token not in text, f"{scenario.id} incident text contains spoiler {token!r}"

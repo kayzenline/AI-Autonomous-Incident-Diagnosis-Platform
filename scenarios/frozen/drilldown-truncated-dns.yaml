@@ -6,8 +6,8 @@ service: gateway
 tags: [fault, drill_down, network]
 holdout: true
 incident:
-  title: "Gateway errors fill the first log page"
-  description: "Gateway is returning errors. The first page of error logs is cache noise."
+  title: Gateway error rate spike
+  description: Gateway is returning 5xx responses and emitting a high volume of error logs.
   service: gateway
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

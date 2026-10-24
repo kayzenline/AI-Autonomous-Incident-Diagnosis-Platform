@@ -4,8 +4,8 @@ service: checkout
 tags: [unknown]
 holdout: false
 incident:
-  title: "Checkout latency is high"
-  description: "Latency rose, and no resource, deploy, or dependency explains it."
+  title: Checkout latency is high
+  description: Checkout p99 latency rose above the alert threshold.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

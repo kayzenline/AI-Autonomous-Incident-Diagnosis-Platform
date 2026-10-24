@@ -4,8 +4,8 @@ service: catalog
 tags: [fault, dependency]
 holdout: false
 incident:
-  title: "Catalog waits on inventory"
-  description: "Inventory calls time out and catalog pages stall."
+  title: Catalog page load timeouts
+  description: Product catalog requests are stalling and exceeding the latency SLO.
   service: catalog
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

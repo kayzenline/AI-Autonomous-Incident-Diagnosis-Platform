@@ -4,8 +4,8 @@ service: edge
 tags: [fault, network]
 holdout: false
 incident:
-  title: "Edge cannot resolve upstream"
-  description: "Requests fail before they reach the origin."
+  title: Edge gateway request failures
+  description: Requests fail at the edge gateway before reaching backend services.
   service: edge
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

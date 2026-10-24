@@ -3,147 +3,147 @@
   "scenarios": [
     {
       "id": "bad-deploy-api",
-      "sha256": "0383852f868af26ff09ac94f25d2d032ffc9185b61c7a00a677d726e4ba3e908",
+      "sha256": "96b609671c3ee61713dc63586937c2bc731c17142455f6025af69f32bd076990",
       "holdout": true
     },
     {
       "id": "config-error-flags",
-      "sha256": "626d9f7eb3e459445a40d0a689292dca342be75b5d716bd99052957f57b08373",
+      "sha256": "25fcd584b861f3a1a8299321c5337828c932d3c13074d785f9965e5566e42586",
       "holdout": false
     },
     {
       "id": "config-with-memory-herring",
-      "sha256": "b0eec17cb2f6a6f657221dbbdf007102e3d6d56dee20edfef66fb59240c9ce95",
+      "sha256": "29d56b77c35936120c4021cbb00282a08c8a9b3666b9e6ec24f4043206678f37",
       "holdout": false
     },
     {
       "id": "conflict-deploy-vs-config",
-      "sha256": "3b25c3e588f2fe5c82150e6ab3e88f2920f5ac080d5450f6d6b5c3f42d118c5c",
+      "sha256": "c7e46c720cb0ed0b4fd19a735915cdd116ef5ecf4856137fe2df19240c03b33d",
       "holdout": true
     },
     {
       "id": "cpu-saturation-checkout",
-      "sha256": "88f9b78830f527169bbdabb63afcde4eccdc0c3a8abdb1eeeac486e04c6df62d",
+      "sha256": "663f396277983d15a69c2dea79b07f1c3528dec599d2c8fea5e27828cb5c88b4",
       "holdout": false
     },
     {
       "id": "cpu-with-disk-herring",
-      "sha256": "e0e0c2c5b6dce496df21bca6677a924aff0646d3110df70b5f63b7729d779534",
+      "sha256": "055a03df77221f0defade1cb17788356cb6be8979a1f9deafcdd7610b31495fa",
       "holdout": true
     },
     {
       "id": "db-pool-payments",
-      "sha256": "5ef3fbae7a540ef2ebc2a8f066ec30fba696b4c8f0b78ab06bed1a6824ff36d7",
+      "sha256": "c445f0f7f39ae0549f95fe28c9a2a0fa2e2d982917fe504e0c02b182a6dea9fc",
       "holdout": false
     },
     {
       "id": "db-pool-with-cpu-herring",
-      "sha256": "97a1163572f482f7adb66edaee9b10a10274591ebe26fdd78aab2e93f86ed0af",
+      "sha256": "afad2e13809777ee2c593ac1c84f91e4d5a914e1fc33df5c511763e5e8424041",
       "holdout": false
     },
     {
       "id": "dependency-timeout-inventory",
-      "sha256": "7de550a5d37c16ab2dc8d30ca5f75397bc3560fd1603e7cb2bc610e054878ff0",
+      "sha256": "17c1311ae3b16bbed0d8f9f1aae97ebc2fcd8b81e4f10b051d1638434c550f96",
       "holdout": false
     },
     {
       "id": "dependency-with-cpu-herring",
-      "sha256": "abea732b13e3789fa0a03304d329a4ed4d4419168c85bd7cd72266f02ce4f894",
+      "sha256": "fe2d150a43da1770419f0b6f7593029f3a457145dd518d77ea4571ba9d658112",
       "holdout": true
     },
     {
       "id": "disk-full-logger",
-      "sha256": "120acbfdcd50c512a84f4fd24b0494aa4d6f93c71cb0e1598db1325094bf4a2e",
+      "sha256": "9249546c2c576f923aed4108772526e105c4199f538f26c1594587cfcb7e31f0",
       "holdout": false
     },
     {
       "id": "dns-injection",
-      "sha256": "e63184586e4888d2d11addef66601826689cf505b8fdb4dac678e96de53bd341",
+      "sha256": "989ce7e21fe96f17958ae657edd6590d417130a1e74e6ca12e305595d98fa626",
       "holdout": true
     },
     {
       "id": "dns-nxdomain-edge",
-      "sha256": "710773c5b05c9185b81ba4515139f4c6b1a0c48f2e592843d58f81032539eaff",
+      "sha256": "d68e096ffaf9f4cf61bc3e03a12e82ae7d7bd0db2d0031fe3dd3772e47408e5a",
       "holdout": false
     },
     {
       "id": "drilldown-payments-pool",
-      "sha256": "643cf903d5cb7bc44603cbf13790746689d3c11fba4da41336020953166a4d05",
+      "sha256": "3d2c7800302d680a402e776fef461386a57d7fd249bcb8b90dcbaaafa6d9afee",
       "holdout": false
     },
     {
       "id": "drilldown-truncated-dns",
-      "sha256": "ba8ee5018d59de78a0773d75d17379ddfcd53e8738978671b56048529f4d1dc0",
+      "sha256": "feceaabf6b75b093efc229bb00592f34cdc2109fd40bfb339c2c6a0010ff8135",
       "holdout": true
     },
     {
       "id": "memory-injection",
-      "sha256": "a08e82067343e06b9ab810bfce60eb9f08e7203dca91d2e6baf2ed6228919d02",
+      "sha256": "4f6c2c483fe7c36187e22ed17d70011227a1a8920ca044d597fa3be2822c2497",
       "holdout": false
     },
     {
       "id": "memory-leak-worker",
-      "sha256": "443c5c78d40c407eeb0fa682fa45550bafcccc05d4e37c843adbf658abed931a",
+      "sha256": "260a72ba438b01992bb643c1a22c91df58dd52ef0291266902e8e1340155ff0d",
       "holdout": false
     },
     {
       "id": "misleading-disk-alert",
-      "sha256": "0fc4787327a6979474d14a4c7b6863eb8fe761d652f8fa2e0e933e82b7b505f3",
+      "sha256": "eaf8ca548ce2b961540446964deebff1178de6bf7f16f5402bbce6d035ef2b93",
       "holdout": true
     },
     {
       "id": "multihop-checkout-payments-pool",
-      "sha256": "c0dc4e1c2ad1be2d312ba4b321b0df0d983e2ad5844f4fe5436d246158076c39",
+      "sha256": "2087cc2b5de80b2dc1b61f634e03801f423ac1b7427c08973f9f40b20124775c",
       "holdout": false
     },
     {
       "id": "multihop-checkout-pricing-dns",
-      "sha256": "fb1ca90a978f7a4e65facdd620bf420a70c6f21ce13339c0fac8774c6737b82a",
+      "sha256": "95cb17ce5c87017685872ae5ef0cd1679b9fb0c019110c80d5fd2614ae435a98",
       "holdout": true
     },
     {
       "id": "noisy-pool-warmup",
-      "sha256": "9ad2364d57b8e64e42d6cb7f72a0cddf098ee3be5de2b7db1abcda776d156e95",
+      "sha256": "5cc770f5b2089592630f68745076c3ce0fe64d2ac2d4da50119c40faa13ed236",
       "holdout": false
     },
     {
       "id": "normal-fluctuation",
-      "sha256": "05a6098a719ca08dbec43ac6c48b3a9c0402c6ced077e0691e42663f2aa79a31",
+      "sha256": "a1f2bd2ad5691f2242fefee9de62055faa8c3dbf9e47c1db368a9c882db3d3bb",
       "holdout": false
     },
     {
       "id": "pool-injection",
-      "sha256": "904358e065095040bc71200fc6676fd992797a3265c7048f617f77a8aba51c5f",
+      "sha256": "9c26fa98ba2e6d043a84df40832852d134ac35e6b2adf320c7f7b5d4d0ae6038",
       "holdout": false
     },
     {
       "id": "traffic-spike-web",
-      "sha256": "e142fef95f00b1104bb7fb3f80cee1c2a34ed72dce9cff68801fd0b82fc09e2c",
+      "sha256": "f3d70071701a24e0902d75eb2b19ecf52f3edce43fdf6a0f3c487cdb76c4a022",
       "holdout": false
     },
     {
       "id": "unknown-latency-only",
-      "sha256": "b89328aa76bc6647684a8fa21292561faf4fc66fb5ed563af9a376cd1a2f478e",
+      "sha256": "b1cac3e059bc6e7199269e051119d620215585fecaab22771a675503106324dd",
       "holdout": false
     },
     {
       "id": "unknown-metrics-down",
-      "sha256": "d9c1cd53c03da55f9695bed0300eb4d8825baed50a29e25c81d8bbdc1781e925",
+      "sha256": "1b074433878c4317a4aedf05e15961300ad30ea2adfd7f5ab76bd0ef77d51168",
       "holdout": false
     },
     {
       "id": "unknown-mild",
-      "sha256": "1961e0ef962cd90654a3b95469d466eb804170270a92077f659313eab7dcfe7d",
+      "sha256": "c4ccd6ed0d24dc66a53e09effb3153cecab91363098228a9de83addd4fcad5d0",
       "holdout": true
     },
     {
       "id": "unknown-partial-dependency",
-      "sha256": "20049818cef9c94a85420093459aea4c98d94e739d848321b38f6e9ca535f8d0",
+      "sha256": "fad110ddd57890a6fe84adbb8fb9b53546fac7ddc5452354e623059b3cadead1",
       "holdout": false
     },
     {
       "id": "vague-log-healthy",
-      "sha256": "d7baff737d178ccaee888f528cf8c529c6fc7d30929aef7ef94c8d8333bd9908",
+      "sha256": "54212c9f5dc648a8080259df70466bcd4f7e9ddd66d6f352a01fbcb61236d9ba",
       "holdout": false
     }
   ]

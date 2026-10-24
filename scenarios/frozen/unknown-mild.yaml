@@ -4,8 +4,8 @@ service: checkout
 tags: [unknown]
 holdout: true
 incident:
-  title: "Checkout CPU is somewhat elevated"
-  description: "CPU is above the quiet band and below the saturation threshold."
+  title: Checkout utilization notification
+  description: A low-priority alert fired on the checkout service.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

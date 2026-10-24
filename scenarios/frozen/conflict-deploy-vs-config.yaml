@@ -6,8 +6,8 @@ service: billing
 tags: [fault, conflict, config, red_herring]
 holdout: true
 incident:
-  title: "Billing errors after a rollout and a config push"
-  description: "Billing started returning errors. A rollout and a config push both landed in the window."
+  title: Billing service error rate above SLO
+  description: Billing requests started failing with 5xx responses during the incident window.
   service: billing
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

@@ -4,8 +4,8 @@ service: payments
 tags: [fault, database]
 holdout: false
 incident:
-  title: "Payments cannot get a connection"
-  description: "New checkout requests wait on the database pool."
+  title: Payments service request timeouts
+  description: Payment authorization calls are timing out and returning 5xx errors.
   service: payments
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z
