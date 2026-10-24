@@ -1,0 +1,55 @@
+id: memory-leak-worker
+title: "Worker memory leak"
+service: worker
+tags: [fault, memory]
+holdout: false
+incident:
+  title: "Worker memory climbed"
+  description: "The worker process grew until it was evicted."
+  service: worker
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [worker]
+  metrics_unavailable: false
+  metrics:
+    - service: worker
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: worker
+      metric: memory
+      evidence_key: "metric:memory_growth"
+      points:
+        - {at: 2026-10-23T02:50:00Z, value: 50}
+        - {at: 2026-10-23T03:05:00Z, value: 96}
+    - service: worker
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: worker
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: worker
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.2}
+    - service: worker
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: worker
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: MEMORY
+  cause: memory_leak
+  severity: high
+  key_evidence_keys: ["metric:memory_growth"]

@@ -1,0 +1,120 @@
+{
+  "set": "frozen-v1",
+  "scenarios": [
+    {
+      "id": "bad-deploy-api",
+      "sha256": "0383852f868af26ff09ac94f25d2d032ffc9185b61c7a00a677d726e4ba3e908",
+      "holdout": true
+    },
+    {
+      "id": "config-error-flags",
+      "sha256": "626d9f7eb3e459445a40d0a689292dca342be75b5d716bd99052957f57b08373",
+      "holdout": false
+    },
+    {
+      "id": "config-with-memory-herring",
+      "sha256": "b0eec17cb2f6a6f657221dbbdf007102e3d6d56dee20edfef66fb59240c9ce95",
+      "holdout": false
+    },
+    {
+      "id": "cpu-saturation-checkout",
+      "sha256": "88f9b78830f527169bbdabb63afcde4eccdc0c3a8abdb1eeeac486e04c6df62d",
+      "holdout": false
+    },
+    {
+      "id": "cpu-with-disk-herring",
+      "sha256": "e0e0c2c5b6dce496df21bca6677a924aff0646d3110df70b5f63b7729d779534",
+      "holdout": true
+    },
+    {
+      "id": "db-pool-payments",
+      "sha256": "5ef3fbae7a540ef2ebc2a8f066ec30fba696b4c8f0b78ab06bed1a6824ff36d7",
+      "holdout": false
+    },
+    {
+      "id": "db-pool-with-cpu-herring",
+      "sha256": "97a1163572f482f7adb66edaee9b10a10274591ebe26fdd78aab2e93f86ed0af",
+      "holdout": false
+    },
+    {
+      "id": "dependency-timeout-inventory",
+      "sha256": "7de550a5d37c16ab2dc8d30ca5f75397bc3560fd1603e7cb2bc610e054878ff0",
+      "holdout": false
+    },
+    {
+      "id": "dependency-with-cpu-herring",
+      "sha256": "abea732b13e3789fa0a03304d329a4ed4d4419168c85bd7cd72266f02ce4f894",
+      "holdout": true
+    },
+    {
+      "id": "disk-full-logger",
+      "sha256": "120acbfdcd50c512a84f4fd24b0494aa4d6f93c71cb0e1598db1325094bf4a2e",
+      "holdout": false
+    },
+    {
+      "id": "dns-injection",
+      "sha256": "e63184586e4888d2d11addef66601826689cf505b8fdb4dac678e96de53bd341",
+      "holdout": true
+    },
+    {
+      "id": "dns-nxdomain-edge",
+      "sha256": "710773c5b05c9185b81ba4515139f4c6b1a0c48f2e592843d58f81032539eaff",
+      "holdout": false
+    },
+    {
+      "id": "memory-injection",
+      "sha256": "a08e82067343e06b9ab810bfce60eb9f08e7203dca91d2e6baf2ed6228919d02",
+      "holdout": false
+    },
+    {
+      "id": "memory-leak-worker",
+      "sha256": "443c5c78d40c407eeb0fa682fa45550bafcccc05d4e37c843adbf658abed931a",
+      "holdout": false
+    },
+    {
+      "id": "misleading-disk-alert",
+      "sha256": "0fc4787327a6979474d14a4c7b6863eb8fe761d652f8fa2e0e933e82b7b505f3",
+      "holdout": true
+    },
+    {
+      "id": "normal-fluctuation",
+      "sha256": "05a6098a719ca08dbec43ac6c48b3a9c0402c6ced077e0691e42663f2aa79a31",
+      "holdout": false
+    },
+    {
+      "id": "pool-injection",
+      "sha256": "904358e065095040bc71200fc6676fd992797a3265c7048f617f77a8aba51c5f",
+      "holdout": false
+    },
+    {
+      "id": "traffic-spike-web",
+      "sha256": "e142fef95f00b1104bb7fb3f80cee1c2a34ed72dce9cff68801fd0b82fc09e2c",
+      "holdout": false
+    },
+    {
+      "id": "unknown-latency-only",
+      "sha256": "b89328aa76bc6647684a8fa21292561faf4fc66fb5ed563af9a376cd1a2f478e",
+      "holdout": false
+    },
+    {
+      "id": "unknown-metrics-down",
+      "sha256": "d9c1cd53c03da55f9695bed0300eb4d8825baed50a29e25c81d8bbdc1781e925",
+      "holdout": false
+    },
+    {
+      "id": "unknown-mild",
+      "sha256": "1961e0ef962cd90654a3b95469d466eb804170270a92077f659313eab7dcfe7d",
+      "holdout": true
+    },
+    {
+      "id": "unknown-partial-dependency",
+      "sha256": "20049818cef9c94a85420093459aea4c98d94e739d848321b38f6e9ca535f8d0",
+      "holdout": false
+    },
+    {
+      "id": "vague-log-healthy",
+      "sha256": "d7baff737d178ccaee888f528cf8c529c6fc7d30929aef7ef94c8d8333bd9908",
+      "holdout": false
+    }
+  ]
+}

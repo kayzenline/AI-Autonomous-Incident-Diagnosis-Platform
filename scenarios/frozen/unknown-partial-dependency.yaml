@@ -1,0 +1,46 @@
+id: unknown-partial-dependency
+title: "Missing disk series and moderate latency"
+service: catalog
+tags: [unknown]
+holdout: false
+incident:
+  title: "Catalog evidence is incomplete"
+  description: "Disk samples are missing and latency is only moderately high."
+  service: catalog
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [catalog]
+  metrics_unavailable: false
+  metrics:
+    - service: catalog
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: catalog
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: catalog
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 800}
+    - service: catalog
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.2}
+    - service: catalog
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: catalog
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: UNKNOWN
+  key_evidence_keys: []

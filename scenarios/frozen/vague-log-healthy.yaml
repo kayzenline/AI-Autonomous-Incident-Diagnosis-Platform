@@ -1,0 +1,56 @@
+id: vague-log-healthy
+title: "Vague error log on a healthy service"
+service: worker
+tags: [not_a_fault, misleading]
+holdout: false
+incident:
+  title: "Worker logged a vague error"
+  description: "An error line does not describe a mechanism, and the metrics are quiet."
+  service: worker
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [worker]
+  metrics_unavailable: false
+  metrics:
+    - service: worker
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 22}
+    - service: worker
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 28}
+    - service: worker
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 19}
+    - service: worker
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 120}
+    - service: worker
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.1}
+    - service: worker
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 11}
+  logs:
+    - service: worker
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "something went wrong in the worker"
+      evidence_key: "log:vague"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: worker
+      request_rate_ratio: 1.0
+      evidence_key: "status:healthy"
+ground_truth:
+  verdict: NOT_A_FAULT
+  key_evidence_keys: []

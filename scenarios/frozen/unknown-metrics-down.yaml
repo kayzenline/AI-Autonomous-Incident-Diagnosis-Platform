@@ -1,0 +1,27 @@
+id: unknown-metrics-down
+title: "Metrics backend unavailable"
+service: checkout
+tags: [unknown]
+holdout: false
+incident:
+  title: "Metrics did not load"
+  description: "The metrics backend timed out during the incident window."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout]
+  metrics_unavailable: true
+  metrics_error_key: "status:metrics_unavailable"
+  metrics: []
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: UNKNOWN
+  key_evidence_keys: []

@@ -1,0 +1,59 @@
+id: dns-nxdomain-edge
+title: "Edge DNS failure"
+service: edge
+tags: [fault, network]
+holdout: false
+incident:
+  title: "Edge cannot resolve upstream"
+  description: "Requests fail before they reach the origin."
+  service: edge
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [edge]
+  metrics_unavailable: false
+  metrics:
+    - service: edge
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: edge
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: edge
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: edge
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: edge
+      metric: error_rate
+      evidence_key: "metric:error_rate_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 25}
+    - service: edge
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs:
+    - service: edge
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "NXDOMAIN for upstream"
+      evidence_key: "log:dns_nxdomain"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: edge
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: NETWORK
+  cause: dns_failure
+  severity: high
+  key_evidence_keys: ["log:dns_nxdomain"]

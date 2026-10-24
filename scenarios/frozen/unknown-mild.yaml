@@ -1,0 +1,51 @@
+id: unknown-mild
+title: "Mild CPU without a threshold breach"
+service: checkout
+tags: [unknown]
+holdout: true
+incident:
+  title: "Checkout CPU is somewhat elevated"
+  description: "CPU is above the quiet band and below the saturation threshold."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      evidence_key: "metric:cpu_mild"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 75}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 300}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.4}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: UNKNOWN
+  key_evidence_keys: []
