@@ -1,0 +1,57 @@
+# The error line contains a pool phrase, but the pool is warming up and
+# every resource stays in the healthy band.
+id: noisy-pool-warmup
+title: "Healthy web host logs a pool warmup"
+service: web
+tags: [not_a_fault, noisy, misleading]
+holdout: false
+incident:
+  title: "Pager mentions the web connection pool"
+  description: "A single error line mentions the pool. Host metrics stay in the normal band."
+  service: web
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [web]
+  metrics_unavailable: false
+  metrics:
+    - service: web
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: web
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: web
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 22}
+    - service: web
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 80}
+    - service: web
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.1}
+    - service: web
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 12}
+  logs:
+    - service: web
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "connection pool warmup finished for the replica"
+      evidence_key: "log:pool_warmup"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: web
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: NOT_A_FAULT
+  key_evidence_keys: []

@@ -1,0 +1,123 @@
+# Two hops: checkout times out on inventory, inventory is down on pricing,
+# and pricing is failing name resolution. The incident-service sweep stops
+# at the first hop.
+id: multihop-checkout-pricing-dns
+title: "Checkout fails through inventory"
+service: checkout
+tags: [fault, multi_hop, network, red_herring]
+holdout: true
+incident:
+  title: "Checkout fails through inventory"
+  description: "Checkout is slow. Inventory is the first callee. The failing name is further downstream."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout, inventory, pricing]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 35}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 25}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 1800}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 7}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 10}
+    - service: inventory
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 28}
+    - service: inventory
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 33}
+    - service: inventory
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 22}
+    - service: inventory
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 2000}
+    - service: inventory
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 4}
+    - service: inventory
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 11}
+    - service: pricing
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: pricing
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: pricing
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 18}
+    - service: pricing
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 300}
+    - service: pricing
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 9}
+    - service: pricing
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 8}
+  logs:
+    - service: pricing
+      at: 2026-10-23T03:06:00Z
+      level: ERROR
+      message: "NXDOMAIN for pricing.internal"
+      evidence_key: "log:pricing_nxdomain"
+  changes: []
+  dependencies:
+    - service: checkout
+      name: inventory
+      status: timeout
+      latency_ms: 1900
+      evidence_key: "dep:inventory_timeout"
+    - service: inventory
+      name: pricing
+      status: down
+      latency_ms: 3000
+      evidence_key: "dep:pricing_down"
+  databases: []
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+    - service: inventory
+      request_rate_ratio: 1.0
+    - service: pricing
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: NETWORK
+  cause: dns_failure
+  severity: medium
+  key_evidence_keys: ["log:pricing_nxdomain", "dep:pricing_down"]

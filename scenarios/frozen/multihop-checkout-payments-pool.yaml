@@ -1,0 +1,96 @@
+# Root cause is the payments connection pool. Checkout only shows a timeout.
+# A sweep of the incident service never reads the payments database.
+id: multihop-checkout-payments-pool
+title: "Checkout stalls while calling payments"
+service: checkout
+tags: [fault, multi_hop, database, red_herring]
+holdout: false
+incident:
+  title: "Checkout stalls while calling payments"
+  description: "Checkout requests pile up. Payments is the callee. Local CPU and disk look ordinary."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout, payments]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 2200}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 8}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+    - service: payments
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 35}
+    - service: payments
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 42}
+    - service: payments
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 25}
+    - service: payments
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 400}
+    - service: payments
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 2}
+    - service: payments
+      metric: db_connections
+      evidence_key: "metric:payments_db_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 98}
+  logs:
+    - service: payments
+      at: 2026-10-23T03:06:00Z
+      level: ERROR
+      message: "too many connections; connection pool exhausted"
+      evidence_key: "log:pool_exhausted"
+  changes: []
+  dependencies:
+    - service: checkout
+      name: payments
+      status: timeout
+      latency_ms: 2500
+      evidence_key: "dep:payments_timeout"
+  databases:
+    - service: payments
+      connections_pct: 98
+      waiters: 12
+      evidence_key: "db:payments_pool"
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+    - service: payments
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DATABASE
+  cause: db_pool_exhausted
+  severity: high
+  key_evidence_keys: ["db:payments_pool", "metric:payments_db_high", "log:pool_exhausted"]
