@@ -4,8 +4,8 @@ service: catalog
 tags: [fault, dependency, red_herring]
 holdout: true
 incident:
-  title: "Catalog times out while CPU is also high"
-  description: "Payments is timing out. The CPU spike is a red herring."
+  title: Catalog latency spike and host alert
+  description: Catalog requests are timing out while host alerts are active.
   service: catalog
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

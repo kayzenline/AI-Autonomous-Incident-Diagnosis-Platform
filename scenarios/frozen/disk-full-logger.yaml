@@ -4,8 +4,8 @@ service: logger
 tags: [fault, disk]
 holdout: false
 incident:
-  title: "Logger cannot persist"
-  description: "Log writes fail because the volume is full."
+  title: Logger ingestion errors
+  description: The logger service is failing to process incoming batches.
   service: logger
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

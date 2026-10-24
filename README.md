@@ -1,6 +1,6 @@
 # AgentOps
 
-Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Persistence (M2) and the LLM agents (M3 and M4) are not started.
+Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Persistence (M2) and the multi-step investigation agent (M4) are next.
 
 ## Architecture
 
@@ -143,10 +143,11 @@ The rule baseline and the original 23 scenarios landed in one commit (`f1eba32`)
 ```bash
 python -m app.eval check
 python -m app.eval write
-python -m app.eval compare evals/baselines/m1-rule.json evals/baselines/m1-rule.json
+python -m app.eval run-m3 --provider fake
+python -m app.eval compare evals/baselines/m1-rule.json evals/baselines/m3-single-shot.json
 ```
 
-`check` fails when a fresh run does not match the committed score or the scenario hashes.
+`check` fails when a fresh run does not match the committed M1/M3 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`) or the scenario hashes (`evals/baselines/frozen-manifest.json`). To run M3 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and run `python -m app.eval run-m3 --provider openai`.
 
 ## Scenarios API
 

@@ -7,8 +7,8 @@ service: checkout
 tags: [fault, multi_hop, network, red_herring]
 holdout: true
 incident:
-  title: "Checkout fails through inventory"
-  description: "Checkout is slow. Inventory is the first callee. The failing name is further downstream."
+  title: Checkout tail latency and errors
+  description: Checkout requests are slow and failing intermittently.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

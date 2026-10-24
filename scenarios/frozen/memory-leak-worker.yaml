@@ -4,8 +4,8 @@ service: worker
 tags: [fault, memory]
 holdout: false
 incident:
-  title: "Worker memory climbed"
-  description: "The worker process grew until it was evicted."
+  title: Worker pods evicted in production
+  description: Background worker instances restarted repeatedly during the window.
   service: worker
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

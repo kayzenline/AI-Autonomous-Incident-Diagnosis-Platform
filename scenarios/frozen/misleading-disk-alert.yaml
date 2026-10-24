@@ -4,8 +4,8 @@ service: checkout
 tags: [not_a_fault, misleading]
 holdout: true
 incident:
-  title: "Disk page fired on a healthy host"
-  description: "The page says the disk is critical. The volume is not full."
+  title: Storage host alert triggered
+  description: An automated alert paged on-call for the storage service.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

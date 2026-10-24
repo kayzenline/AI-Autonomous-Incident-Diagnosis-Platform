@@ -4,8 +4,8 @@ service: payments
 tags: [fault, database, red_herring]
 holdout: false
 incident:
-  title: "Payments pool is full and CPU is high"
-  description: "The pool is exhausted. CPU is a secondary symptom."
+  title: Payments service errors and high load
+  description: Payments error rate spiked alongside elevated host utilization alerts.
   service: payments
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

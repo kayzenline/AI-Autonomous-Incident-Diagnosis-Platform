@@ -6,8 +6,8 @@ service: checkout
 tags: [fault, drill_down, database]
 holdout: false
 incident:
-  title: "Checkout errors with a green payments check"
-  description: "Checkout error rate rose. The payments edge check is still green."
+  title: Checkout error rate elevated
+  description: Checkout started returning 5xx errors to callers during the window.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

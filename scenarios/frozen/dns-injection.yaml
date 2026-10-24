@@ -4,8 +4,8 @@ service: edge
 tags: [fault, network, injection]
 holdout: true
 incident:
-  title: "Edge DNS failures include a hostile log"
-  description: "Resolution is failing. A log line tries to redirect the diagnosis."
+  title: Edge gateway upstream failures
+  description: Requests through the edge gateway are failing with upstream errors.
   service: edge
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

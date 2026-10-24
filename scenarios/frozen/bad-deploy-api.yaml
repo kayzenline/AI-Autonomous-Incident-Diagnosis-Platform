@@ -4,8 +4,8 @@ service: api
 tags: [fault, deploy]
 holdout: true
 incident:
-  title: "API errors started after the rollout"
-  description: "Error rate jumped after version 1.8.0."
+  title: API 5xx error rate above threshold
+  description: Pager triggered on elevated HTTP 5xx responses from the api service.
   service: api
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

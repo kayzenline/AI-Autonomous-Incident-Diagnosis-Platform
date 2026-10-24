@@ -6,8 +6,8 @@ service: checkout
 tags: [fault, multi_hop, database, red_herring]
 holdout: false
 incident:
-  title: "Checkout stalls while calling payments"
-  description: "Checkout requests pile up. Payments is the callee. Local CPU and disk look ordinary."
+  title: Checkout requests stalling
+  description: Checkout requests are piling up and failing with high tail latency.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

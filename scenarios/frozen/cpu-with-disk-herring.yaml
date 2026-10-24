@@ -4,8 +4,8 @@ service: checkout
 tags: [fault, cpu, red_herring]
 holdout: true
 incident:
-  title: "Checkout is slow and disk alerts are firing"
-  description: "CPU is saturated. The disk alert is a red herring."
+  title: Checkout latency and host alert firing
+  description: Checkout requests are slow and an infrastructure alert paged on-call.
   service: checkout
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

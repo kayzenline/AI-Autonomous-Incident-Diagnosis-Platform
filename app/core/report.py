@@ -53,3 +53,11 @@ class DiagnosisReport(BaseModel):
         if self.verdict != Verdict.FAULT and (self.hypotheses or self.severity is not None):
             raise ValueError("NOT_A_FAULT and UNKNOWN reports omit hypotheses and severity")
         return self
+
+
+def cited_keys(report: DiagnosisReport) -> set[str]:
+    keys: set[str] = set()
+    for hypothesis in report.hypotheses:
+        keys.update(hypothesis.supporting_evidence)
+        keys.update(hypothesis.contradicting_evidence)
+    return keys

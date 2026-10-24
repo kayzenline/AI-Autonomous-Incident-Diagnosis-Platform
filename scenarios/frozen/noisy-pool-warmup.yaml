@@ -6,8 +6,8 @@ service: web
 tags: [not_a_fault, noisy, misleading]
 holdout: false
 incident:
-  title: "Pager mentions the web connection pool"
-  description: "A single error line mentions the pool. Host metrics stay in the normal band."
+  title: Web service log alert triggered
+  description: A log-based alert paged on-call for the web service after startup.
   service: web
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z

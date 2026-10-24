@@ -4,8 +4,8 @@ service: flags
 tags: [fault, config, red_herring]
 holdout: false
 incident:
-  title: "Flag config failed while memory is high"
-  description: "The config push is the fault. Memory growth is a red herring."
+  title: Flag service error rate and high utilization alert
+  description: Multiple alerts fired on the flags service during the current window.
   service: flags
   occurred_at: 2026-10-23T03:00:00Z
   detected_at: 2026-10-23T03:10:00Z
