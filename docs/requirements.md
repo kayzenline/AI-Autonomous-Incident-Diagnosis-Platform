@@ -72,6 +72,8 @@
 
 **基线公平性前提**：规则基线只能通过 `ToolPort` 取数，**不得读取 `ground_truth` 或场景定义**。规则由**不看答案**的方式编写（先写规则、冻结，再写/生成场景；或规则只依据通用阈值如 CPU>90%）。基线 Top-1 ≥ 90% 时，先加难场景（红鲱鱼、级联、证据不足）再比较。基线 Top-1 低于 30% 时，相对基线的涨幅只作记录。
 
+最初 23 题和规则基线在同一提交（`f1eba32`）进入仓库，git 历史不能证明规则先于这些答案冻结。规则使用通用阈值。`RULE_ORDER` 没有为了红鲱鱼误判重排，后加的多跳、下钻、冲突和噪声题也没有改这份顺序；那些题是对着已经在树上的规则写的。只扫事件服务、并用默认时间窗，拿不到多跳和下钻题的决定性证据键。规则 Top-1 因此留在约 0.87 以下，给 M3 / M4 留出空间。具体分数以 `evals/baselines/m1-rule.json` 为准。
+
 ---
 
 ## 2. 用户与核心用例
@@ -263,7 +265,7 @@ GET  /v1/scenarios                         只返回 id、标题、服务、标�
 
 ### 4.3 Scenario Simulator
 - YAML：拓扑、指标时间序列、日志模板、变更记录、红鲱鱼、**证据键**、`ground_truth`。工具结果只带证据键和数据，不带 `relevant: true`。
-- 参数化生成扩充场景，生成的题可以练习。对外报告只用事先冻结的题集（见 FR-8）。初始场景：高 CPU（`cpu_saturation`）、内存泄漏、连接池耗尽、磁盘满、DNS、错误部署、级联超时、配置错误、流量突增（`verdict=NOT_A_FAULT`，`cause` 为空，不是 cause id）、证据不足（`verdict=UNKNOWN`）、误导性告警（本清单写明 `verdict=NOT_A_FAULT`；其他此类题在场景里写明 `NOT_A_FAULT` 或 `UNKNOWN`）、日志含注入文本（注入不改变该题的 `ground_truth`）。
+- 参数化生成扩充场景，生成的题可以练习。对外报告只用事先冻结的题集（见 FR-8）。初始场景：高 CPU（`cpu_saturation`）、内存泄漏、连接池耗尽、磁盘满、DNS、错误部署、级联超时、配置错误、流量突增（`verdict=NOT_A_FAULT`，`cause` 为空，不是 cause id）、证据不足（`verdict=UNKNOWN`）、误导性告警（本清单写明 `verdict=NOT_A_FAULT`；其他此类题在场景里写明 `NOT_A_FAULT` 或 `UNKNOWN`）、日志含注入文本（注入不改变该题的 `ground_truth`）。后加的冻结题覆盖多跳依赖（决定性证据在下游服务）、下钻参数（另一个 `service`，或比默认 20 行日志页更窄的时间窗）、同一轮工具结果里互相冲突的证据，以及健康主机上的噪声日志。这些题不把 `ground_truth` 放进 `ToolPort`，工具结果也不带 `relevant: true`。
 - 规则基线**不得**访问 `ground_truth`（由 `ToolPort` 隔离，`ground_truth` 只被评分器读取）。`GET /v1/scenarios` 不返回 `ground_truth`。
 
 ### 4.4 框架引入理由
