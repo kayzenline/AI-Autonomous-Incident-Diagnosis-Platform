@@ -1,0 +1,69 @@
+{
+  "left": "m1",
+  "right": "m3",
+  "left_top1": 0.65,
+  "right_top1": 0.85,
+  "top1_delta": 0.2,
+  "left_top3": 0.8,
+  "right_top3": 0.95,
+  "top3_delta": 0.15,
+  "evidence_recall_delta": 0.15,
+  "evidence_precision_delta": 0.154,
+  "changed_cases": [
+    {
+      "scenario_id": "conflict-deploy-vs-config",
+      "expected_verdict": "FAULT",
+      "expected_cause": "config_error",
+      "left_verdict": "FAULT",
+      "left_top_cause": "bad_deploy",
+      "left_top1_hit": false,
+      "right_verdict": "FAULT",
+      "right_top_cause": "config_error",
+      "right_top1_hit": true
+    },
+    {
+      "scenario_id": "drilldown-payments-pool",
+      "expected_verdict": "FAULT",
+      "expected_cause": "db_pool_exhausted",
+      "left_verdict": "UNKNOWN",
+      "left_top_cause": null,
+      "left_top1_hit": false,
+      "right_verdict": "FAULT",
+      "right_top_cause": "db_pool_exhausted",
+      "right_top1_hit": true
+    },
+    {
+      "scenario_id": "multihop-checkout-payments-pool",
+      "expected_verdict": "FAULT",
+      "expected_cause": "db_pool_exhausted",
+      "left_verdict": "FAULT",
+      "left_top_cause": "dependency_timeout",
+      "left_top1_hit": false,
+      "right_verdict": "FAULT",
+      "right_top_cause": "db_pool_exhausted",
+      "right_top1_hit": true
+    },
+    {
+      "scenario_id": "multihop-checkout-pricing-dns",
+      "expected_verdict": "FAULT",
+      "expected_cause": "dns_failure",
+      "left_verdict": "FAULT",
+      "left_top_cause": "dependency_timeout",
+      "left_top1_hit": false,
+      "right_verdict": "FAULT",
+      "right_top_cause": "dns_failure",
+      "right_top1_hit": true
+    },
+    {
+      "scenario_id": "noisy-pool-warmup",
+      "expected_verdict": "NOT_A_FAULT",
+      "expected_cause": null,
+      "left_verdict": "FAULT",
+      "left_top_cause": "db_pool_exhausted",
+      "left_top1_hit": null,
+      "right_verdict": "NOT_A_FAULT",
+      "right_top_cause": null,
+      "right_top1_hit": null
+    }
+  ]
+}

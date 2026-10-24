@@ -31,6 +31,10 @@ class SimulatorTools:
         self._world = world
         self._ip_aliases: dict[str, str] = {}
 
+    @property
+    def services(self) -> tuple[str, ...]:
+        return tuple(self._world.services)
+
     def query_metrics(self, request: QueryMetricsInput) -> ToolResult:
         unknown = self._unknown(request.service)
         if unknown is not None:

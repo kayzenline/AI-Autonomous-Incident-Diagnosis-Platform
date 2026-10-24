@@ -318,7 +318,7 @@ EvalCaseResult(id, eval_run_id→, scenario_id, run_id→, scores)
 ### 4.7 目录结构
 ```
 app/
-  api/  domain/  agent/  tools/(adapters/simulator)  llm/(adapters/fake,<provider>)
+  api/  domain/  agent/  tools/(adapters/simulator)  llm/(adapters/fake,openai)
   memory/(M6)  persistence/(M2)  eval/  core/
 docs/requirements.md
 scenarios/  evals/baselines/  tests/{unit,integration,eval}
@@ -371,7 +371,7 @@ scenarios/  evals/baselines/  tests/{unit,integration,eval}
 
 ## 8. 已确认的决策
 
-1. 模型端口先接**已有密钥的一家**，另一家只留适配器空位。
+1. 模型端口先接 **OpenAI**（`OPENAI_API_KEY`，支持官方及兼容接口）与 `FakeLLMAdapter`，另一家只留适配器空位。
 2. 目标为作品集；Prometheus 非主线验收。
 3. 先 API + CLI。CLI 归 M2：一个命令提交事件、接上事件流、打印报告。Trace 页面待 M4 事件流稳定后再议；浏览器 `EventSource` 不在 M2。
 4. 异步为进程内 `asyncio`，单进程，不引入 Redis。
@@ -383,7 +383,6 @@ scenarios/  evals/baselines/  tests/{unit,integration,eval}
 
 这些数不在本文编造。写成配置，或写成当时的实验记录。
 
-- **首个 LLM 提供商是哪家？** M3 再填手头有密钥的那一家。文档暂以 `<provider>` 占位，不卡住开工。
 - 相似度去重阈值。
 - 分页方式。
 - `agreement@k` 的 k。

@@ -4,17 +4,11 @@ Top-1 and Top-3 apply only when the expected verdict is FAULT.
 Evidence precision is undefined when nothing was expected and nothing was cited.
 """
 
-from app.core.report import DiagnosisReport
+from app.core.report import DiagnosisReport, cited_keys
 from app.core.taxonomy import Verdict
 from app.eval.scenario import GroundTruth
 
-
-def cited_keys(report: DiagnosisReport) -> set[str]:
-    keys: set[str] = set()
-    for hypothesis in report.hypotheses:
-        keys.update(hypothesis.supporting_evidence)
-        keys.update(hypothesis.contradicting_evidence)
-    return keys
+__all__ = ["cited_keys", "evidence_precision", "evidence_recall", "top_hit"]
 
 
 def top_hit(report: DiagnosisReport, expected: GroundTruth, *, limit: int) -> bool | None:
