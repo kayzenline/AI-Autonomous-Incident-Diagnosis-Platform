@@ -5,6 +5,7 @@
 > - **v2.1**：确立只读诊断、Scenario Simulator + 稳定证据键、Eval-first（M1 基线）、单进程异步 Run + SSE、证据账本与只读 Verifier、情景记忆 + 服务知识库（无程序性记忆）。
 > - **v2.2**：`cause` 改为封闭 id、`NOT_A_FAULT` / `UNKNOWN` 只出现在 `verdict`、幻觉率只统计模型第一次输出。
 > - **v2.3（当前）**：主结论改为 M4 Top-1 减 M3 Top-1、幻觉率与校验通过条件拆开、补齐 Top-1/Top-3 与证据精确率、删掉 `traffic_spike`、备选 cause 必须属于期望 category、M3 参数由代码生成、PR 门禁与夜间评测拆开、M1 分数写入文件、冻结题集、请求字段统一为 `user_severity`、注入文本只包裹不删除。实现时的行为见各节，未填数字见 §9。
+> - **精确率空集**：期望键和引用都为空时，证据精确率无定义，不进入平均。这修正了「没有引用时精确率为 0」对应当引用为空的 `NOT_A_FAULT` / `UNKNOWN` 的误罚。期望键非空但没有引用，仍为 0。
 
 ---
 
@@ -45,7 +46,7 @@
 
 **证据键**
 - 召回 = `|引用键 ∩ 期望键| / |期望键|`
-- 精确率 = `|引用键 ∩ 期望键| / |引用键|`。没有引用时精确率为 0。红鲱鱼键在账本里是合法引用，会进入分母。
+- 精确率 = `|引用键 ∩ 期望键| / |引用键|`。期望键和引用都为空时精确率无定义，不进入平均（与召回在期望键为空时相同）。期望键非空但没有引用时精确率为 0。有引用而期望键为空时精确率为 0。红鲱鱼键在账本里是合法引用，会进入分母。
 - 工具结果只带证据键和数据，不带 `relevant: true`。`ground_truth` 只有评分器能读。
 
 **引用的两个数**
@@ -183,7 +184,7 @@ Triage(代码) → Hypothesize(LLM) → Investigate(LLM 选工具，循环) → 
 
 ### FR-8 评测框架
 - 基准用例 = `incident + scenario_id + expected{category, cause, acceptable_alternatives, key_evidence_keys, verdict, severity}`。`cause` 与 `acceptable_alternatives` 都是 FR-5 的枚举 id，备选 cause 必须属于期望 `category`。期望 `verdict` 不是 `FAULT` 时，`category`、`cause`、`severity` 为空。评分比较报告 `severity` 与场景期望，不读 `user_severity`。
-- **证据键**：召回 = `|引用键 ∩ 期望键| / |期望键|`；精确率 = `|引用键 ∩ 期望键| / |引用键|`（没有引用时精确率为 0；红鲱鱼键是合法引用，进入分母）。工具结果只带证据键和数据。`ground_truth` 留在 `scenarios/*.yaml`，只有评分器读取。
+- **证据键**：召回 = `|引用键 ∩ 期望键| / |期望键|`（期望键为空则无定义，不进入平均）；精确率 = `|引用键 ∩ 期望键| / |引用键|`（期望键与引用都为空则无定义，不进入平均；期望键非空但没有引用时为 0；有引用而期望键为空时为 0；红鲱鱼键是合法引用，进入分母）。工具结果只带证据键和数据。`ground_truth` 留在 `scenarios/*.yaml`，只有评分器读取。
 - **每次 Pull Request 的门禁**（回放不保护 Prompt 质量，这些检查不跑真实模型的新诊断）：
   1. 单元测试；
   2. 规则基线；

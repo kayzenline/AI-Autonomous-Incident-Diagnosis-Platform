@@ -1,7 +1,7 @@
 """Score a diagnosis report against ground truth.
 
 Top-1 and Top-3 apply only when the expected verdict is FAULT.
-Evidence precision is 0 when the report cites nothing.
+Evidence precision is undefined when nothing was expected and nothing was cited.
 """
 
 from app.core.report import DiagnosisReport
@@ -34,7 +34,19 @@ def evidence_recall(cited: set[str], expected_keys: list[str]) -> float | None:
     return len(cited & expected) / len(expected)
 
 
-def evidence_precision(cited: set[str], expected_keys: list[str]) -> float:
+def evidence_precision(cited: set[str], expected_keys: list[str]) -> float | None:
+    """Return precision, or None when both sides are empty.
+
+    Recall is already undefined when the expected set is empty. Precision is
+    the same for a report that correctly cites nothing (`NOT_A_FAULT` /
+    `UNKNOWN` with no key evidence): averaging a zero would punish that
+    abstention. Citing nothing when keys were expected is a real miss and
+    stays 0. Citing keys when none were expected is also 0.
+    """
+
+    expected = set(expected_keys)
+    if not cited and not expected:
+        return None
     if not cited:
         return 0.0
-    return len(cited & set(expected_keys)) / len(cited)
+    return len(cited & expected) / len(cited)

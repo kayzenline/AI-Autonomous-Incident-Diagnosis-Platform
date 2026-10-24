@@ -12,7 +12,7 @@
     "UNKNOWN": 1.0
   },
   "evidence_recall": 1.0,
-  "evidence_precision": 0.5725,
+  "evidence_precision": 0.8778,
   "severity_accuracy": 1.0,
   "cases": [
     {
@@ -238,7 +238,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "normal-fluctuation",
@@ -253,7 +253,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "pool-injection",
@@ -283,7 +283,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "unknown-latency-only",
@@ -298,7 +298,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "unknown-metrics-down",
@@ -313,7 +313,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "unknown-mild",
@@ -328,7 +328,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "unknown-partial-dependency",
@@ -343,7 +343,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     },
     {
       "scenario_id": "vague-log-healthy",
@@ -358,7 +358,7 @@
       "top3_hit": null,
       "severity_hit": null,
       "evidence_recall": null,
-      "evidence_precision": 0.0
+      "evidence_precision": null
     }
   ]
 }

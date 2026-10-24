@@ -57,7 +57,11 @@ def test_committed_baseline_matches_a_fresh_run() -> None:
 
     assert report["scenario_count"] >= 20
     assert report["holdout_count"] >= 6
-    assert report["top1"] < 0.9
+    assert report["top1"] < 0.87
+    abstained = [case for case in report["cases"] if case["evidence_precision"] is None]
+    assert abstained
+    assert all(case["expected_verdict"] != "FAULT" for case in abstained)
+    assert all(case["evidence_recall"] is None for case in abstained)
     cases = {case["scenario_id"]: case for case in report["cases"]}
     assert cases["cpu-saturation-checkout"]["top1_hit"] is True
     assert cases["cpu-with-disk-herring"]["top1_hit"] is False
