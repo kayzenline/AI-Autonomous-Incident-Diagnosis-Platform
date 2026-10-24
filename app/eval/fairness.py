@@ -5,12 +5,21 @@ import inspect
 from pathlib import Path
 from types import ModuleType
 
-from app.agent import baseline, single_shot
-from app.llm.adapters import fake, openai
+from app.agent import baseline, investigator, ledger, single_shot, verifier
+from app.llm.adapters import fake, investigator_fake, openai
 
 
 def assert_baseline_is_isolated() -> None:
-    for mod in (baseline, single_shot, fake, openai):
+    for mod in (
+        baseline,
+        single_shot,
+        investigator,
+        ledger,
+        verifier,
+        fake,
+        investigator_fake,
+        openai,
+    ):
         _assert_module_is_isolated(mod)
 
 

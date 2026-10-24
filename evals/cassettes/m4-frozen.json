@@ -1,0 +1,2225 @@
+{
+  "version": "m4-cassette-v1",
+  "entries": [
+    {
+      "scenario_id": "bad-deploy-api",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"api\"}, \"summary\": \"Inspect ERROR logs on api in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"api\"}, \"summary\": \"Query error_rate on api to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"api\"}, \"summary\": \"Check downstream dependency health from api.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"api\"}, \"summary\": \"Check recent deploys or config changes on api.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"bad_deploy\", \"cause_summary\": \"Error rate rose after a deploy in the window.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"change:bad_deploy\", \"metric:error_rate_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DEPLOY\", \"cause\": \"bad_deploy\", \"cause_summary\": \"Error rate rose after a deploy in the window.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"change:bad_deploy\", \"metric:error_rate_high\"]}], \"recommendations\": [{\"action\": \"Mitigate bad_deploy on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed bad_deploy with 2 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:error_rate_high",
+        "change:bad_deploy"
+      ],
+      "expected_tool_calls": 4,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "bad_deploy",
+            "cause_summary": "Error rate rose after a deploy in the window.",
+            "category": "DEPLOY",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "change:bad_deploy",
+              "metric:error_rate_high"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate bad_deploy on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "config-error-flags",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"flags\"}, \"summary\": \"Inspect ERROR logs on flags in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"flags\"}, \"summary\": \"Query error_rate on flags to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"flags\"}, \"summary\": \"Check downstream dependency health from flags.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"flags\"}, \"summary\": \"Check recent deploys or config changes on flags.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"config_error\", \"cause_summary\": \"A config change landed with errors in the window.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"change:bad_config\", \"log:bad_config\", \"metric:error_rate_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"CONFIG\", \"cause\": \"config_error\", \"cause_summary\": \"A config change landed with errors in the window.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"change:bad_config\", \"log:bad_config\", \"metric:error_rate_high\"]}], \"recommendations\": [{\"action\": \"Mitigate config_error on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed config_error with 3 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:bad_config",
+        "metric:error_rate_high",
+        "change:bad_config"
+      ],
+      "expected_tool_calls": 4,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "config_error",
+            "cause_summary": "A config change landed with errors in the window.",
+            "category": "CONFIG",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "change:bad_config",
+              "log:bad_config",
+              "metric:error_rate_high"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate config_error on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "config-with-memory-herring",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"flags\"}, \"summary\": \"Inspect ERROR logs on flags in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"flags\"}, \"summary\": \"Query error_rate on flags to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"flags\"}, \"summary\": \"Check downstream dependency health from flags.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"flags\"}, \"summary\": \"Check recent deploys or config changes on flags.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"config_error\", \"cause_summary\": \"A config change landed with errors in the window.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"change:bad_config\", \"metric:error_rate_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"CONFIG\", \"cause\": \"config_error\", \"cause_summary\": \"A config change landed with errors in the window.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"change:bad_config\", \"metric:error_rate_high\"]}], \"recommendations\": [{\"action\": \"Mitigate config_error on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed config_error with 2 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:error_rate_high",
+        "change:bad_config"
+      ],
+      "expected_tool_calls": 4,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "config_error",
+            "cause_summary": "A config change landed with errors in the window.",
+            "category": "CONFIG",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "change:bad_config",
+              "metric:error_rate_high"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate config_error on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "conflict-deploy-vs-config",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"billing\"}, \"summary\": \"Inspect ERROR logs on billing in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"billing\"}, \"summary\": \"Query error_rate on billing to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"billing\"}, \"summary\": \"Check downstream dependency health from billing.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"billing\"}, \"summary\": \"Check recent deploys or config changes on billing.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"config_error\", \"cause_summary\": \"A config change landed with errors in the window.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"change:bad_config\", \"log:bad_config\", \"metric:error_rate_high\"]}, {\"cause\": \"bad_deploy\", \"cause_summary\": \"Error rate rose after a deploy in the window.\", \"confidence\": 0.25, \"status\": \"REJECTED\", \"supporting_evidence\": [\"change:routine_deploy\", \"metric:error_rate_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"CONFIG\", \"cause\": \"config_error\", \"cause_summary\": \"A config change landed with errors in the window.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"change:bad_config\", \"log:bad_config\", \"metric:error_rate_high\"]}], \"recommendations\": [{\"action\": \"Mitigate config_error on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed config_error with 3 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:bad_config",
+        "metric:error_rate_high",
+        "change:routine_deploy",
+        "change:bad_config"
+      ],
+      "expected_tool_calls": 4,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "config_error",
+            "cause_summary": "A config change landed with errors in the window.",
+            "category": "CONFIG",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "change:bad_config",
+              "log:bad_config",
+              "metric:error_rate_high"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate config_error on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "cpu-saturation-checkout",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"checkout\"}, \"summary\": \"Query latency_p99 on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"checkout\"}, \"summary\": \"Query db_connections on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"checkout\"}, \"summary\": \"Query cpu on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"checkout\"}, \"summary\": \"Query memory on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"checkout\"}, \"summary\": \"Query disk on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"cpu_saturation\", \"cause_summary\": \"CPU stayed above the saturation threshold.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:cpu_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"CPU\", \"cause\": \"cpu_saturation\", \"cause_summary\": \"CPU stayed above the saturation threshold.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:cpu_high\"]}], \"recommendations\": [{\"action\": \"Mitigate cpu_saturation on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed cpu_saturation with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:cpu_high"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "cpu_saturation",
+            "cause_summary": "CPU stayed above the saturation threshold.",
+            "category": "CPU",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:cpu_high"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate cpu_saturation on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "cpu-with-disk-herring",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"checkout\"}, \"summary\": \"Query latency_p99 on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"checkout\"}, \"summary\": \"Query db_connections on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"checkout\"}, \"summary\": \"Query cpu on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"checkout\"}, \"summary\": \"Query memory on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"checkout\"}, \"summary\": \"Query disk on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"cpu_saturation\", \"cause_summary\": \"CPU stayed above the saturation threshold.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:cpu_high\"]}, {\"cause\": \"disk_full\", \"cause_summary\": \"Disk usage crossed the fullness threshold.\", \"confidence\": 0.25, \"status\": \"REJECTED\", \"supporting_evidence\": [\"metric:disk_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"CPU\", \"cause\": \"cpu_saturation\", \"cause_summary\": \"CPU stayed above the saturation threshold.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:cpu_high\"]}], \"recommendations\": [{\"action\": \"Mitigate cpu_saturation on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed cpu_saturation with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:cpu_high",
+        "metric:disk_high"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "cpu_saturation",
+            "cause_summary": "CPU stayed above the saturation threshold.",
+            "category": "CPU",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:cpu_high"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate cpu_saturation on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "db-pool-payments",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"payments\"}, \"summary\": \"Inspect ERROR logs on payments in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"payments\"}, \"summary\": \"Query error_rate on payments to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"payments\"}, \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"confidence\": 0.8, \"status\": \"PROPOSED\"}], \"summary\": \"Corroborate pool exhaustion log on payments with db_connections metric.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Check database connection pool waiters on payments.\", \"tool\": \"query_db_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:db_conn_max\", \"db:pool_waiters\", \"log:pool_timeout\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DATABASE\", \"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:db_conn_max\", \"db:pool_waiters\", \"log:pool_timeout\"]}], \"recommendations\": [{\"action\": \"Mitigate db_pool_exhausted on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed db_pool_exhausted with 3 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:pool_timeout",
+        "metric:db_conn_max",
+        "db:pool_waiters"
+      ],
+      "expected_tool_calls": 4,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "db_pool_exhausted",
+            "cause_summary": "Database connections were exhausted.",
+            "category": "DATABASE",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:db_conn_max",
+              "db:pool_waiters",
+              "log:pool_timeout"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate db_pool_exhausted on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "db-pool-with-cpu-herring",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"payments\"}, \"summary\": \"Inspect ERROR logs on payments in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"payments\"}, \"summary\": \"Query error_rate on payments to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Check downstream dependency health from payments.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"payments\"}, \"summary\": \"Query latency_p99 on payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"payments\"}, \"summary\": \"Query db_connections on payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"payments\"}, \"summary\": \"Query cpu on payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"payments\"}, \"summary\": \"Query memory on payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"payments\"}, \"summary\": \"Query disk on payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:db_conn_max\"]}, {\"cause\": \"cpu_saturation\", \"cause_summary\": \"CPU stayed above the saturation threshold.\", \"confidence\": 0.25, \"status\": \"REJECTED\", \"supporting_evidence\": [\"metric:cpu_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DATABASE\", \"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:db_conn_max\"]}], \"recommendations\": [{\"action\": \"Mitigate db_pool_exhausted on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed db_pool_exhausted with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:db_conn_max",
+        "metric:cpu_high"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "db_pool_exhausted",
+            "cause_summary": "Database connections were exhausted.",
+            "category": "DATABASE",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:db_conn_max"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate db_pool_exhausted on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "dependency-timeout-inventory",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"catalog\"}, \"summary\": \"Inspect ERROR logs on catalog in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"catalog\"}, \"summary\": \"Query error_rate on catalog to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"catalog\"}, \"summary\": \"Check downstream dependency health from catalog.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"catalog\"}, \"summary\": \"Check recent deploys or config changes on catalog.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"inventory\"}, \"summary\": \"Inspect downstream dependency inventory for multi-hop failures.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"inventory\"}, \"summary\": \"Check database pool health on downstream service inventory.\", \"tool\": \"query_db_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"catalog\"}, \"summary\": \"Query latency_p99 on catalog to confirm dependency timeout impact.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"catalog\"}, \"summary\": \"Check CPU utilization on catalog for concurrent resource pressure.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"dependency_timeout\", \"cause_summary\": \"A dependency was unhealthy while latency or errors were high.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"dep:inventory_timeout\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DEPENDENCY\", \"cause\": \"dependency_timeout\", \"cause_summary\": \"A dependency was unhealthy while latency or errors were high.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"dep:inventory_timeout\"]}], \"recommendations\": [{\"action\": \"Mitigate dependency_timeout on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed dependency_timeout with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "dep:inventory_timeout",
+        "metric:latency_high"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "dependency_timeout",
+            "cause_summary": "A dependency was unhealthy while latency or errors were high.",
+            "category": "DEPENDENCY",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "dep:inventory_timeout"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate dependency_timeout on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "dependency-with-cpu-herring",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"catalog\"}, \"summary\": \"Inspect ERROR logs on catalog in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"catalog\"}, \"summary\": \"Query error_rate on catalog to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"catalog\"}, \"summary\": \"Check downstream dependency health from catalog.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"catalog\"}, \"summary\": \"Check recent deploys or config changes on catalog.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Inspect downstream dependency payments for multi-hop failures.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Check database pool health on downstream service payments.\", \"tool\": \"query_db_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"catalog\"}, \"summary\": \"Query latency_p99 on catalog to confirm dependency timeout impact.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"catalog\"}, \"summary\": \"Check CPU utilization on catalog for concurrent resource pressure.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"dependency_timeout\", \"cause_summary\": \"A dependency was unhealthy while latency or errors were high.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"dep:payments_timeout\"]}, {\"cause\": \"cpu_saturation\", \"cause_summary\": \"CPU stayed above the saturation threshold.\", \"confidence\": 0.25, \"status\": \"REJECTED\", \"supporting_evidence\": [\"metric:cpu_high\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DEPENDENCY\", \"cause\": \"dependency_timeout\", \"cause_summary\": \"A dependency was unhealthy while latency or errors were high.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"dep:payments_timeout\"]}], \"recommendations\": [{\"action\": \"Mitigate dependency_timeout on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed dependency_timeout with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "dep:payments_timeout",
+        "metric:cpu_high"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "dependency_timeout",
+            "cause_summary": "A dependency was unhealthy while latency or errors were high.",
+            "category": "DEPENDENCY",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "dep:payments_timeout"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate dependency_timeout on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "disk-full-logger",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"logger\"}, \"summary\": \"Inspect ERROR logs on logger in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"logger\"}, \"summary\": \"Query error_rate on logger to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"logger\"}, \"hypotheses\": [{\"cause\": \"disk_full\", \"confidence\": 0.75, \"status\": \"PROPOSED\"}], \"summary\": \"Corroborate disk error log on logger with disk utilization metric.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"disk_full\", \"cause_summary\": \"Disk usage crossed the fullness threshold.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:disk_high\", \"log:disk_full\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DISK\", \"cause\": \"disk_full\", \"cause_summary\": \"Disk usage crossed the fullness threshold.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:disk_high\", \"log:disk_full\"]}], \"recommendations\": [{\"action\": \"Mitigate disk_full on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed disk_full with 2 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:disk_full",
+        "metric:disk_high"
+      ],
+      "expected_tool_calls": 3,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "disk_full",
+            "cause_summary": "Disk usage crossed the fullness threshold.",
+            "category": "DISK",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:disk_high",
+              "log:disk_full"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate disk_full on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "dns-injection",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"edge\"}, \"summary\": \"Inspect ERROR logs on edge in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"edge\"}, \"summary\": \"Query error_rate on edge to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"log:dns_nxdomain\"]}], \"report\": {\"hypotheses\": [{\"category\": \"NETWORK\", \"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"log:dns_nxdomain\"]}], \"recommendations\": [{\"action\": \"Mitigate dns_failure on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"medium\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed dns_failure with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:dns_nxdomain"
+      ],
+      "expected_tool_calls": 2,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "dns_failure",
+            "cause_summary": "Name resolution failed.",
+            "category": "NETWORK",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "log:dns_nxdomain"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "medium",
+        "recommendations": [
+          {
+            "action": "Mitigate dns_failure on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "dns-nxdomain-edge",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"edge\"}, \"summary\": \"Inspect ERROR logs on edge in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"edge\"}, \"summary\": \"Query error_rate on edge to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"log:dns_nxdomain\"]}], \"report\": {\"hypotheses\": [{\"category\": \"NETWORK\", \"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"log:dns_nxdomain\"]}], \"recommendations\": [{\"action\": \"Mitigate dns_failure on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed dns_failure with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:dns_nxdomain",
+        "metric:error_rate_high"
+      ],
+      "expected_tool_calls": 2,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "dns_failure",
+            "cause_summary": "Name resolution failed.",
+            "category": "NETWORK",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "log:dns_nxdomain"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate dns_failure on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "drilldown-payments-pool",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check recent deploys or config changes on checkout.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Inspect downstream dependency payments for multi-hop failures.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Check database pool health on downstream service payments.\", \"tool\": \"query_db_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"payments\"}, \"summary\": \"Query db_connections metric on downstream service payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"payments\"}, \"summary\": \"Search ERROR logs on downstream service payments.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:payments_db_high\", \"db:payments_pool\", \"log:pool_exhausted\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DATABASE\", \"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:payments_db_high\", \"db:payments_pool\", \"log:pool_exhausted\"]}], \"recommendations\": [{\"action\": \"Mitigate db_pool_exhausted on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed db_pool_exhausted with 3 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "dep:payments_green",
+        "db:payments_pool",
+        "metric:payments_db_high",
+        "log:pool_exhausted"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "db_pool_exhausted",
+            "cause_summary": "Database connections were exhausted.",
+            "category": "DATABASE",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:payments_db_high",
+              "db:payments_pool",
+              "log:pool_exhausted"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate db_pool_exhausted on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "drilldown-truncated-dns",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"gateway\"}, \"summary\": \"Inspect ERROR logs on gateway in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"gateway\", \"time_range\": {\"end\": \"2026-10-23T03:15:00Z\", \"start\": \"2026-10-23T03:05:01Z\"}}, \"summary\": \"First log page on gateway was truncated; narrow time_range past page 1.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"gateway\"}, \"summary\": \"Query error_rate on gateway to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"log:late_nxdomain\"]}], \"report\": {\"hypotheses\": [{\"category\": \"NETWORK\", \"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"log:late_nxdomain\"]}], \"recommendations\": [{\"action\": \"Mitigate dns_failure on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"medium\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed dns_failure with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:late_nxdomain"
+      ],
+      "expected_tool_calls": 3,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "dns_failure",
+            "cause_summary": "Name resolution failed.",
+            "category": "NETWORK",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "log:late_nxdomain"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "medium",
+        "recommendations": [
+          {
+            "action": "Mitigate dns_failure on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "memory-injection",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"worker\"}, \"summary\": \"Inspect ERROR logs on worker in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"worker\"}, \"summary\": \"Query error_rate on worker to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"worker\"}, \"summary\": \"Check downstream dependency health from worker.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"worker\"}, \"summary\": \"Query latency_p99 on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"worker\"}, \"summary\": \"Query db_connections on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"worker\"}, \"summary\": \"Query cpu on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"worker\"}, \"summary\": \"Query memory on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"worker\"}, \"summary\": \"Query disk on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"memory_leak\", \"cause_summary\": \"Memory climbed and stayed high.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:memory_growth\"]}], \"report\": {\"hypotheses\": [{\"category\": \"MEMORY\", \"cause\": \"memory_leak\", \"cause_summary\": \"Memory climbed and stayed high.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:memory_growth\"]}], \"recommendations\": [{\"action\": \"Mitigate memory_leak on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed memory_leak with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:injection_noise",
+        "metric:memory_growth"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "memory_leak",
+            "cause_summary": "Memory climbed and stayed high.",
+            "category": "MEMORY",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:memory_growth"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate memory_leak on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "memory-leak-worker",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"worker\"}, \"summary\": \"Inspect ERROR logs on worker in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"worker\"}, \"summary\": \"Query error_rate on worker to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"worker\"}, \"summary\": \"Check downstream dependency health from worker.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"worker\"}, \"summary\": \"Query latency_p99 on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"worker\"}, \"summary\": \"Query db_connections on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"worker\"}, \"summary\": \"Query cpu on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"worker\"}, \"summary\": \"Query memory on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"worker\"}, \"summary\": \"Query disk on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"memory_leak\", \"cause_summary\": \"Memory climbed and stayed high.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:memory_growth\"]}], \"report\": {\"hypotheses\": [{\"category\": \"MEMORY\", \"cause\": \"memory_leak\", \"cause_summary\": \"Memory climbed and stayed high.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:memory_growth\"]}], \"recommendations\": [{\"action\": \"Mitigate memory_leak on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed memory_leak with 1 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:memory_growth"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "memory_leak",
+            "cause_summary": "Memory climbed and stayed high.",
+            "category": "MEMORY",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:memory_growth"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate memory_leak on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "misleading-disk-alert",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"checkout\"}, \"summary\": \"Query latency_p99 on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"checkout\"}, \"summary\": \"Query db_connections on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"checkout\"}, \"summary\": \"Query cpu on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"checkout\"}, \"summary\": \"Query memory on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"checkout\"}, \"summary\": \"Query disk on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"All inspected metrics and dependencies are within normal bounds.\"], \"verdict\": \"NOT_A_FAULT\"}, \"summary\": \"Confirmed NOT_A_FAULT across metrics, logs, and dependencies.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:false_disk_page"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "NOT_A_FAULT",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "All inspected metrics and dependencies are within normal bounds."
+        ]
+      }
+    },
+    {
+      "scenario_id": "multihop-checkout-payments-pool",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check recent deploys or config changes on checkout.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Inspect downstream dependency payments for multi-hop failures.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Check database pool health on downstream service payments.\", \"tool\": \"query_db_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"payments\"}, \"summary\": \"Query db_connections metric on downstream service payments.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"payments\"}, \"summary\": \"Search ERROR logs on downstream service payments.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:payments_db_high\", \"db:payments_pool\", \"log:pool_exhausted\"]}, {\"cause\": \"dependency_timeout\", \"cause_summary\": \"A dependency was unhealthy while latency or errors were high.\", \"confidence\": 0.25, \"status\": \"REJECTED\", \"supporting_evidence\": [\"dep:payments_timeout\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DATABASE\", \"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:payments_db_high\", \"db:payments_pool\", \"log:pool_exhausted\"]}], \"recommendations\": [{\"action\": \"Mitigate db_pool_exhausted on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed db_pool_exhausted with 3 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "dep:payments_timeout",
+        "db:payments_pool",
+        "metric:payments_db_high",
+        "log:pool_exhausted"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "db_pool_exhausted",
+            "cause_summary": "Database connections were exhausted.",
+            "category": "DATABASE",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:payments_db_high",
+              "db:payments_pool",
+              "log:pool_exhausted"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate db_pool_exhausted on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "multihop-checkout-pricing-dns",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check recent deploys or config changes on checkout.\", \"tool\": \"get_recent_changes\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"inventory\"}, \"summary\": \"Inspect downstream dependency inventory for multi-hop failures.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"pricing\"}, \"summary\": \"Drill down into second-hop service pricing error logs.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"pricing\"}, \"summary\": \"Query error_rate on second-hop service pricing.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"log:pricing_nxdomain\", \"dep:pricing_down\"]}, {\"cause\": \"dependency_timeout\", \"cause_summary\": \"A dependency was unhealthy while latency or errors were high.\", \"confidence\": 0.25, \"status\": \"REJECTED\", \"supporting_evidence\": [\"dep:inventory_timeout\"]}], \"report\": {\"hypotheses\": [{\"category\": \"NETWORK\", \"cause\": \"dns_failure\", \"cause_summary\": \"Name resolution failed.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"log:pricing_nxdomain\", \"dep:pricing_down\"]}], \"recommendations\": [{\"action\": \"Mitigate dns_failure on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"medium\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed dns_failure with 2 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "dep:inventory_timeout",
+        "dep:pricing_down",
+        "log:pricing_nxdomain"
+      ],
+      "expected_tool_calls": 7,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "dns_failure",
+            "cause_summary": "Name resolution failed.",
+            "category": "NETWORK",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "log:pricing_nxdomain",
+              "dep:pricing_down"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "medium",
+        "recommendations": [
+          {
+            "action": "Mitigate dns_failure on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "noisy-pool-warmup",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"web\"}, \"summary\": \"Inspect ERROR logs on web in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"web\"}, \"summary\": \"Query error_rate on web to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"web\"}, \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"confidence\": 0.8, \"status\": \"PROPOSED\"}], \"summary\": \"Corroborate pool exhaustion log on web with db_connections metric.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"web\"}, \"summary\": \"Check downstream dependency health from web.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"web\"}, \"summary\": \"Query latency_p99 on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"web\"}, \"summary\": \"Query cpu on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"web\"}, \"summary\": \"Query memory on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"web\"}, \"summary\": \"Query disk on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"All inspected metrics and dependencies are within normal bounds.\"], \"verdict\": \"NOT_A_FAULT\"}, \"summary\": \"Confirmed NOT_A_FAULT across metrics, logs, and dependencies.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:pool_warmup"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "NOT_A_FAULT",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "All inspected metrics and dependencies are within normal bounds."
+        ]
+      }
+    },
+    {
+      "scenario_id": "normal-fluctuation",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"web\"}, \"summary\": \"Inspect ERROR logs on web in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"web\"}, \"summary\": \"Query error_rate on web to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"web\"}, \"summary\": \"Check downstream dependency health from web.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"web\"}, \"summary\": \"Query latency_p99 on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"web\"}, \"summary\": \"Query db_connections on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"web\"}, \"summary\": \"Query cpu on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"web\"}, \"summary\": \"Query memory on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"web\"}, \"summary\": \"Query disk on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"All inspected metrics and dependencies are within normal bounds.\"], \"verdict\": \"NOT_A_FAULT\"}, \"summary\": \"Confirmed NOT_A_FAULT across metrics, logs, and dependencies.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "NOT_A_FAULT",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "All inspected metrics and dependencies are within normal bounds."
+        ]
+      }
+    },
+    {
+      "scenario_id": "pool-injection",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"payments\"}, \"summary\": \"Inspect ERROR logs on payments in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"payments\"}, \"summary\": \"Query error_rate on payments to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"payments\"}, \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"confidence\": 0.8, \"status\": \"PROPOSED\"}], \"summary\": \"Corroborate pool exhaustion log on payments with db_connections metric.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"payments\"}, \"summary\": \"Check database connection pool waiters on payments.\", \"tool\": \"query_db_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"hypotheses\": [{\"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"status\": \"LEADING\", \"supporting_evidence\": [\"metric:db_conn_max\", \"log:pool_timeout\"]}], \"report\": {\"hypotheses\": [{\"category\": \"DATABASE\", \"cause\": \"db_pool_exhausted\", \"cause_summary\": \"Database connections were exhausted.\", \"confidence\": 0.9, \"contradicting_evidence\": [], \"supporting_evidence\": [\"metric:db_conn_max\", \"log:pool_timeout\"]}], \"recommendations\": [{\"action\": \"Mitigate db_pool_exhausted on affected service and verify recovery.\", \"requires_approval\": true, \"risk\": \"low\"}], \"severity\": \"high\", \"unresolved_questions\": [], \"verdict\": \"FAULT\"}, \"summary\": \"Confirmed db_pool_exhausted with 2 evidence key(s).\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:pool_timeout",
+        "metric:db_conn_max"
+      ],
+      "expected_tool_calls": 4,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [
+          {
+            "cause": "db_pool_exhausted",
+            "cause_summary": "Database connections were exhausted.",
+            "category": "DATABASE",
+            "confidence": 0.9,
+            "supporting_evidence": [
+              "metric:db_conn_max",
+              "log:pool_timeout"
+            ],
+            "contradicting_evidence": []
+          }
+        ],
+        "verdict": "FAULT",
+        "severity": "high",
+        "recommendations": [
+          {
+            "action": "Mitigate db_pool_exhausted on affected service and verify recovery.",
+            "risk": "low",
+            "requires_approval": true
+          }
+        ],
+        "unresolved_questions": []
+      }
+    },
+    {
+      "scenario_id": "traffic-spike-web",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"web\"}, \"summary\": \"Inspect ERROR logs on web in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"web\"}, \"summary\": \"Query error_rate on web to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"web\"}, \"summary\": \"Check downstream dependency health from web.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"web\"}, \"summary\": \"Query latency_p99 on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"web\"}, \"summary\": \"Query db_connections on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"web\"}, \"summary\": \"Query cpu on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"web\"}, \"summary\": \"Query memory on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"web\"}, \"summary\": \"Query disk on web.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"All inspected metrics and dependencies are within normal bounds.\"], \"verdict\": \"NOT_A_FAULT\"}, \"summary\": \"Confirmed NOT_A_FAULT across metrics, logs, and dependencies.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "NOT_A_FAULT",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "All inspected metrics and dependencies are within normal bounds."
+        ]
+      }
+    },
+    {
+      "scenario_id": "unknown-latency-only",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"checkout\"}, \"summary\": \"Query latency_p99 on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"checkout\"}, \"summary\": \"Query db_connections on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"checkout\"}, \"summary\": \"Query cpu on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"checkout\"}, \"summary\": \"Query memory on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"checkout\"}, \"summary\": \"Query disk on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"Observed signals do not establish a single root cause.\"], \"verdict\": \"UNKNOWN\"}, \"summary\": \"Abstaining with UNKNOWN due to ambiguous or sub-threshold signals.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:latency_high"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "UNKNOWN",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "Observed signals do not establish a single root cause."
+        ]
+      }
+    },
+    {
+      "scenario_id": "unknown-metrics-down",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"One or more required metric series could not be retrieved.\"], \"verdict\": \"UNKNOWN\"}, \"summary\": \"Abstaining with UNKNOWN due to missing or unavailable metric series.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "status:metrics_unavailable"
+      ],
+      "expected_tool_calls": 2,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "UNKNOWN",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "One or more required metric series could not be retrieved."
+        ]
+      }
+    },
+    {
+      "scenario_id": "unknown-mild",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"checkout\"}, \"summary\": \"Inspect ERROR logs on checkout in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"checkout\"}, \"summary\": \"Query error_rate on checkout to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"checkout\"}, \"summary\": \"Check downstream dependency health from checkout.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"checkout\"}, \"summary\": \"Query latency_p99 on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"checkout\"}, \"summary\": \"Query db_connections on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"checkout\"}, \"summary\": \"Query cpu on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"checkout\"}, \"summary\": \"Query memory on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"checkout\"}, \"summary\": \"Query disk on checkout.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"Observed signals do not establish a single root cause.\"], \"verdict\": \"UNKNOWN\"}, \"summary\": \"Abstaining with UNKNOWN due to ambiguous or sub-threshold signals.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "metric:cpu_mild"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "UNKNOWN",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "Observed signals do not establish a single root cause."
+        ]
+      }
+    },
+    {
+      "scenario_id": "unknown-partial-dependency",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"catalog\"}, \"summary\": \"Inspect ERROR logs on catalog in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"catalog\"}, \"summary\": \"Query error_rate on catalog to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"catalog\"}, \"summary\": \"Check downstream dependency health from catalog.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"catalog\"}, \"summary\": \"Query latency_p99 on catalog.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"catalog\"}, \"summary\": \"Query db_connections on catalog.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"catalog\"}, \"summary\": \"Query cpu on catalog.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"catalog\"}, \"summary\": \"Query memory on catalog.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"catalog\"}, \"summary\": \"Query disk on catalog.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"Observed signals do not establish a single root cause.\"], \"verdict\": \"UNKNOWN\"}, \"summary\": \"Abstaining with UNKNOWN due to ambiguous or sub-threshold signals.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "UNKNOWN",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "Observed signals do not establish a single root cause."
+        ]
+      }
+    },
+    {
+      "scenario_id": "vague-log-healthy",
+      "llm_responses": [
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"min_level\": \"ERROR\", \"service\": \"worker\"}, \"summary\": \"Inspect ERROR logs on worker in the default window.\", \"tool\": \"search_logs\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"error_rate\", \"service\": \"worker\"}, \"summary\": \"Query error_rate on worker to quantify impact and check metrics availability.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"service\": \"worker\"}, \"summary\": \"Check downstream dependency health from worker.\", \"tool\": \"get_dependency_health\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"latency_p99\", \"service\": \"worker\"}, \"summary\": \"Query latency_p99 on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"db_connections\", \"service\": \"worker\"}, \"summary\": \"Query db_connections on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"cpu\", \"service\": \"worker\"}, \"summary\": \"Query cpu on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"memory\", \"service\": \"worker\"}, \"summary\": \"Query memory on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"call_tool\", \"arguments\": {\"metric\": \"disk\", \"service\": \"worker\"}, \"summary\": \"Query disk on worker.\", \"tool\": \"query_metrics\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        },
+        {
+          "content": "{\"action\": \"final_report\", \"report\": {\"hypotheses\": [], \"recommendations\": [], \"severity\": null, \"unresolved_questions\": [\"All inspected metrics and dependencies are within normal bounds.\"], \"verdict\": \"NOT_A_FAULT\"}, \"summary\": \"Confirmed NOT_A_FAULT across metrics, logs, and dependencies.\"}",
+          "model": "fake-m4-investigator-v1",
+          "tokens_in": 160,
+          "tokens_out": 96
+        }
+      ],
+      "expected_status": "COMPLETED",
+      "expected_ledger_keys": [
+        "log:vague"
+      ],
+      "expected_tool_calls": 8,
+      "expected_first_output_illegal_citation": false,
+      "expected_first_output_illegal_citation_rate": 0.0,
+      "expected_accepted_illegal_citation_rate": 0.0,
+      "expected_report": {
+        "hypotheses": [],
+        "verdict": "NOT_A_FAULT",
+        "severity": null,
+        "recommendations": [],
+        "unresolved_questions": [
+          "All inspected metrics and dependencies are within normal bounds."
+        ]
+      }
+    }
+  ]
+}
