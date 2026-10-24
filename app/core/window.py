@@ -1,6 +1,6 @@
 """Default investigation window from incident timestamps."""
 
-from datetime import datetime, timedelta
+from datetime import UTC, datetime, timedelta
 
 from pydantic import BaseModel, ConfigDict
 
@@ -12,6 +12,14 @@ class TimeRange(BaseModel):
     end: datetime
 
 
+def _as_utc(moment: datetime) -> datetime:
+    """Treat a naive timestamp as UTC. Aware timestamps convert to UTC."""
+
+    if moment.tzinfo is None:
+        return moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC)
+
+
 def default_window(
     occurred_at: datetime | None,
     detected_at: datetime | None,
@@ -20,7 +28,13 @@ def default_window(
 
     With occurred_at, the window starts 15 minutes earlier and ends 5 minutes
     after detected_at. With only detected_at, it is the 30 minutes before detection.
+    Naive timestamps are UTC, matching simulator observations.
     """
+
+    if occurred_at is not None:
+        occurred_at = _as_utc(occurred_at)
+    if detected_at is not None:
+        detected_at = _as_utc(detected_at)
 
     if occurred_at is not None and detected_at is not None:
         return TimeRange(
@@ -41,4 +55,4 @@ def default_window(
 
 
 def contains(window: TimeRange, moment: datetime) -> bool:
-    return window.start <= moment <= window.end
+    return _as_utc(window.start) <= _as_utc(moment) <= _as_utc(window.end)

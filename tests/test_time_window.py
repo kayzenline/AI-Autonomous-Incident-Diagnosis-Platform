@@ -29,6 +29,18 @@ def test_window_is_absent_without_timestamps() -> None:
     assert default_window(None, None) is None
 
 
+def test_naive_timestamps_become_utc() -> None:
+    occurred = datetime(2026, 10, 23, 3, 0)
+    detected = datetime(2026, 10, 23, 3, 10)
+
+    window = default_window(occurred, detected)
+
+    assert window is not None
+    assert window.start == datetime(2026, 10, 23, 2, 45, tzinfo=UTC)
+    assert window.end == datetime(2026, 10, 23, 3, 15, tzinfo=UTC)
+    assert window.start <= datetime(2026, 10, 23, 3, 5, tzinfo=UTC) <= window.end
+
+
 def test_scenario_clock_stays_put() -> None:
     moment = datetime(2026, 10, 23, 3, 10, tzinfo=UTC)
     clock = ScenarioClock(moment)

@@ -92,9 +92,9 @@ def diagnose(incident: IncidentCreate, tools: ToolPort) -> DiagnosisReport:
         return _fault(signals, _maximum(series, MetricName.ERROR_RATE))
 
     ratio = _ratio(status)
-    if ratio is not None and ratio >= TRAFFIC_RATIO:
-        return _not_a_fault("Request rate is elevated without a resource fault.")
     if _healthy(series, dependencies):
+        if ratio is not None and ratio >= TRAFFIC_RATIO:
+            return _not_a_fault("Request rate is elevated without a resource fault.")
         return _not_a_fault("Observations stay inside the normal band.")
     return _unknown("No threshold fired, and the observations are not a clean healthy band.")
 

@@ -101,6 +101,69 @@ def test_missing_service_does_not_call_tools() -> None:
     assert spy.calls == 0
 
 
+def test_naive_timestamps_still_reach_simulator_points() -> None:
+    report = diagnose(
+        _incident(
+            occurred_at=datetime(2026, 10, 23, 3, 0),
+            detected_at=datetime(2026, 10, 23, 3, 10),
+        ),
+        SimulatorTools(_cpu_world()),
+    )
+
+    assert report.verdict == Verdict.FAULT
+    assert report.hypotheses[0].cause == Cause.CPU_SATURATION
+
+
+def test_elevated_traffic_without_a_healthy_band_stays_unknown() -> None:
+    world = World(
+        services=["checkout"],
+        metrics=[
+            MetricSeries(
+                service="checkout",
+                metric=metric,
+                points=[
+                    MetricPoint(
+                        at=_DETECTED,
+                        value=800 if metric == MetricName.LATENCY_P99 else 10,
+                    )
+                ],
+            )
+            for metric in MetricName
+            if metric != MetricName.DISK
+        ],
+        statuses=[StatusRecord(service="checkout", request_rate_ratio=2.0)],
+    )
+
+    report = diagnose(_incident(), SimulatorTools(world))
+
+    assert report.verdict == Verdict.UNKNOWN
+
+
+def test_elevated_traffic_inside_the_healthy_band_is_not_a_fault() -> None:
+    world = World(
+        services=["checkout"],
+        metrics=[
+            MetricSeries(
+                service="checkout",
+                metric=metric,
+                points=[
+                    MetricPoint(
+                        at=_DETECTED,
+                        value=0.2 if metric == MetricName.ERROR_RATE else 10,
+                    )
+                ],
+            )
+            for metric in MetricName
+        ],
+        statuses=[StatusRecord(service="checkout", request_rate_ratio=2.0)],
+    )
+
+    report = diagnose(_incident(), SimulatorTools(world))
+
+    assert report.verdict == Verdict.NOT_A_FAULT
+    assert report.hypotheses == []
+
+
 def test_baseline_ignores_user_severity() -> None:
     world = _cpu_world()
 
