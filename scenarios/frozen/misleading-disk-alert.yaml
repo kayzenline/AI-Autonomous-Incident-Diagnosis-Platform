@@ -1,0 +1,56 @@
+id: misleading-disk-alert
+title: "Disk page on a healthy volume"
+service: checkout
+tags: [not_a_fault, misleading]
+holdout: true
+incident:
+  title: "Disk page fired on a healthy host"
+  description: "The page says the disk is critical. The volume is not full."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 18}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 22}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 90}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.1}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 12}
+  logs:
+    - service: checkout
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "P1 page: DISK CRITICAL on checkout host edge-1"
+      evidence_key: "log:false_disk_page"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+      evidence_key: "status:healthy"
+ground_truth:
+  verdict: NOT_A_FAULT
+  key_evidence_keys: []

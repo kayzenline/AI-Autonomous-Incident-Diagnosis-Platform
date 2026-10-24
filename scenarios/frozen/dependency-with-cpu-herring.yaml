@@ -1,0 +1,59 @@
+id: dependency-with-cpu-herring
+title: "Dependency timeout with a CPU herring"
+service: catalog
+tags: [fault, dependency, red_herring]
+holdout: true
+incident:
+  title: "Catalog times out while CPU is also high"
+  description: "Payments is timing out. The CPU spike is a red herring."
+  service: catalog
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [catalog, payments]
+  metrics_unavailable: false
+  metrics:
+    - service: catalog
+      metric: cpu
+      evidence_key: "metric:cpu_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 96}
+    - service: catalog
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: catalog
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: catalog
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 1800}
+    - service: catalog
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 6}
+    - service: catalog
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs: []
+  changes: []
+  dependencies:
+    - service: catalog
+      name: payments
+      status: timeout
+      latency_ms: 1900
+      evidence_key: "dep:payments_timeout"
+  databases: []
+  statuses:
+    - service: catalog
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DEPENDENCY
+  cause: dependency_timeout
+  severity: high
+  key_evidence_keys: ["dep:payments_timeout"]

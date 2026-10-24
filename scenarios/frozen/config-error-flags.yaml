@@ -1,0 +1,64 @@
+id: config-error-flags
+title: "Feature flag config error"
+service: flags
+tags: [fault, config]
+holdout: false
+incident:
+  title: "Flag service rejects its config"
+  description: "A config push left the flag service returning errors."
+  service: flags
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [flags]
+  metrics_unavailable: false
+  metrics:
+    - service: flags
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: flags
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: flags
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: flags
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: flags
+      metric: error_rate
+      evidence_key: "metric:error_rate_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: flags
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs:
+    - service: flags
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "invalid config value for checkout"
+      evidence_key: "log:bad_config"
+  changes:
+    - service: flags
+      at: 2026-10-23T03:02:00Z
+      kind: config
+      summary: "updated the checkout flag"
+      evidence_key: "change:bad_config"
+  dependencies: []
+  databases: []
+  statuses:
+    - service: flags
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: CONFIG
+  cause: config_error
+  severity: high
+  key_evidence_keys: ["change:bad_config", "log:bad_config", "metric:error_rate_high"]

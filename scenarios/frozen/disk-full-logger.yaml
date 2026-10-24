@@ -1,0 +1,59 @@
+id: disk-full-logger
+title: "Logger disk full"
+service: logger
+tags: [fault, disk]
+holdout: false
+incident:
+  title: "Logger cannot persist"
+  description: "Log writes fail because the volume is full."
+  service: logger
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [logger]
+  metrics_unavailable: false
+  metrics:
+    - service: logger
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: logger
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: logger
+      metric: disk
+      evidence_key: "metric:disk_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 97}
+    - service: logger
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: logger
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.2}
+    - service: logger
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs:
+    - service: logger
+      at: 2026-10-23T03:05:00Z
+      level: ERROR
+      message: "no space left on device"
+      evidence_key: "log:disk_full"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: logger
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DISK
+  cause: disk_full
+  severity: high
+  key_evidence_keys: ["metric:disk_high", "log:disk_full"]

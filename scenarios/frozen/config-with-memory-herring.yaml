@@ -1,0 +1,60 @@
+id: config-with-memory-herring
+title: "Config error with a memory herring"
+service: flags
+tags: [fault, config, red_herring]
+holdout: false
+incident:
+  title: "Flag config failed while memory is high"
+  description: "The config push is the fault. Memory growth is a red herring."
+  service: flags
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [flags]
+  metrics_unavailable: false
+  metrics:
+    - service: flags
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: flags
+      metric: memory
+      evidence_key: "metric:memory_growth"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 93}
+    - service: flags
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: flags
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: flags
+      metric: error_rate
+      evidence_key: "metric:error_rate_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 28}
+    - service: flags
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs: []
+  changes:
+    - service: flags
+      at: 2026-10-23T03:02:00Z
+      kind: config
+      summary: "pushed a bad flag file"
+      evidence_key: "change:bad_config"
+  dependencies: []
+  databases: []
+  statuses:
+    - service: flags
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: CONFIG
+  cause: config_error
+  severity: high
+  key_evidence_keys: ["change:bad_config", "metric:error_rate_high"]

@@ -1,0 +1,55 @@
+id: db-pool-with-cpu-herring
+title: "Pool exhaustion with a CPU herring"
+service: payments
+tags: [fault, database, red_herring]
+holdout: false
+incident:
+  title: "Payments pool is full and CPU is high"
+  description: "The pool is exhausted. CPU is a secondary symptom."
+  service: payments
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [payments]
+  metrics_unavailable: false
+  metrics:
+    - service: payments
+      metric: cpu
+      evidence_key: "metric:cpu_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 96}
+    - service: payments
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: payments
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: payments
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: payments
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.2}
+    - service: payments
+      metric: db_connections
+      evidence_key: "metric:db_conn_max"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 97}
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: payments
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DATABASE
+  cause: db_pool_exhausted
+  severity: high
+  key_evidence_keys: ["metric:db_conn_max"]

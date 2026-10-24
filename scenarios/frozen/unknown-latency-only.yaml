@@ -1,0 +1,51 @@
+id: unknown-latency-only
+title: "Latency without a mechanism"
+service: checkout
+tags: [unknown]
+holdout: false
+incident:
+  title: "Checkout latency is high"
+  description: "Latency rose, and no resource, deploy, or dependency explains it."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 35}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: checkout
+      metric: latency_p99
+      evidence_key: "metric:latency_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 1500}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.2}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 10}
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: UNKNOWN
+  key_evidence_keys: []

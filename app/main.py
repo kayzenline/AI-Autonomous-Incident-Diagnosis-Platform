@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
+from app.api.scenarios import router as scenarios_router
 
 app = FastAPI(
     title="AgentOps",
@@ -8,6 +9,7 @@ app = FastAPI(
     version="0.1.0",
 )
 register_exception_handlers(app)
+app.include_router(scenarios_router)
 
 
 @app.get("/")

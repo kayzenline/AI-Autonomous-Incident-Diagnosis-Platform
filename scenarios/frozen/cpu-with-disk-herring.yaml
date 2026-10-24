@@ -1,0 +1,55 @@
+id: cpu-with-disk-herring
+title: "CPU saturation with a full disk herring"
+service: checkout
+tags: [fault, cpu, red_herring]
+holdout: true
+incident:
+  title: "Checkout is slow and disk alerts are firing"
+  description: "CPU is saturated. The disk alert is a red herring."
+  service: checkout
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [checkout]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      evidence_key: "metric:cpu_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 97}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: checkout
+      metric: disk
+      evidence_key: "metric:disk_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 96}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 180}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 0.2}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs: []
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: CPU
+  cause: cpu_saturation
+  severity: high
+  key_evidence_keys: ["metric:cpu_high"]

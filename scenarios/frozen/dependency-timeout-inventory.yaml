@@ -1,0 +1,59 @@
+id: dependency-timeout-inventory
+title: "Inventory dependency timeout"
+service: catalog
+tags: [fault, dependency]
+holdout: false
+incident:
+  title: "Catalog waits on inventory"
+  description: "Inventory calls time out and catalog pages stall."
+  service: catalog
+  occurred_at: 2026-10-23T03:00:00Z
+  detected_at: 2026-10-23T03:10:00Z
+  user_severity: high
+world:
+  services: [catalog, inventory]
+  metrics_unavailable: false
+  metrics:
+    - service: catalog
+      metric: cpu
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 30}
+    - service: catalog
+      metric: memory
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 40}
+    - service: catalog
+      metric: disk
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 20}
+    - service: catalog
+      metric: latency_p99
+      evidence_key: "metric:latency_high"
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 2200}
+    - service: catalog
+      metric: error_rate
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 8}
+    - service: catalog
+      metric: db_connections
+      points:
+        - {at: 2026-10-23T03:05:00Z, value: 15}
+  logs: []
+  changes: []
+  dependencies:
+    - service: catalog
+      name: inventory
+      status: timeout
+      latency_ms: 2500
+      evidence_key: "dep:inventory_timeout"
+  databases: []
+  statuses:
+    - service: catalog
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DEPENDENCY
+  cause: dependency_timeout
+  severity: high
+  key_evidence_keys: ["dep:inventory_timeout"]
