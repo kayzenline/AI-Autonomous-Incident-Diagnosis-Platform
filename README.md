@@ -1,6 +1,6 @@
 # AgentOps
 
-Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Persistence (M2) and the multi-step investigation agent (M4) are next.
+Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). Persistence (M2) and CI eval gates (M5) are next.
 
 ## Architecture
 
@@ -143,11 +143,14 @@ The rule baseline and the original 23 scenarios landed in one commit (`f1eba32`)
 ```bash
 python -m app.eval check
 python -m app.eval write
+python -m app.eval replay
+python -m app.eval inspect drilldown-truncated-dns --mode m4
 python -m app.eval run-m3 --provider fake
-python -m app.eval compare evals/baselines/m1-rule.json evals/baselines/m3-single-shot.json
+python -m app.eval run-m4 --provider fake
+python -m app.eval compare evals/baselines/m3-single-shot.json evals/baselines/m4-agent.json
 ```
 
-`check` fails when a fresh run does not match the committed M1/M3 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`) or the scenario hashes (`evals/baselines/frozen-manifest.json`). To run M3 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and run `python -m app.eval run-m3 --provider openai`.
+`check` fails when a fresh run does not match the committed M1/M3/M4 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`, `evals/baselines/m4-agent.json`, `evals/baselines/m4-vs-m3.json`), the scenario hashes (`evals/baselines/frozen-manifest.json`), or the M4 cassette replay (`evals/cassettes/m4-frozen.json`). To run M3 or M4 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and pass `--provider openai`.
 
 ## Scenarios API
 
