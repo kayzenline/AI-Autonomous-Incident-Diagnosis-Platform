@@ -1,6 +1,6 @@
 # AgentOps
 
-Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). Persistence (M2) and CI eval gates (M5) are next. See [`docs/handoff.md`](docs/handoff.md) for the step-by-step engineering rationale and handoff guide.
+Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M2 persists incidents and runs in SQLite or Postgres, executes the M4 investigator in-process, and streams `RunEvent` rows over SSE. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). CI eval gates (M5) are next. See [`docs/handoff.md`](docs/handoff.md) for the step-by-step engineering rationale and handoff guide.
 
 ## Architecture
 
@@ -151,6 +151,26 @@ python -m app.eval compare evals/baselines/m3-single-shot.json evals/baselines/m
 ```
 
 `check` fails when a fresh run does not match the committed M1/M3/M4 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`, `evals/baselines/m4-agent.json`, `evals/baselines/m4-vs-m3.json`), the scenario hashes (`evals/baselines/frozen-manifest.json`), or the M4 cassette replay (`evals/cassettes/m4-frozen.json`). To run M3 or M4 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and pass `--provider openai`.
+
+## Persist and diagnose
+
+SQLite is the default database (`.agentops.sqlite` in the working directory). Postgres is the deployment database. List pagination is `limit` and `offset` because the requirements leave the page shape open. Archival sets `archived_at`; there is no `ARCHIVED` status. A restart marks leftover `PENDING` and `RUNNING` runs `FAILED` with reason `restart`, because this process is the only worker.
+
+```bash
+docker compose up -d
+export DATABASE_URL=postgresql+asyncpg://agentops:agentops@localhost:5432/agentops
+alembic upgrade head
+export API_KEY=dev-key
+uvicorn app.main:app --reload
+```
+
+One command submits an incident, follows the event stream, and prints the report. Without Postgres, omit `DATABASE_URL` and the API uses SQLite.
+
+```bash
+agentops diagnose --scenario cpu-saturation-checkout --api-key "$API_KEY"
+```
+
+`POST /v1/incidents/{id}/runs` returns 202. The same `Idempotency-Key` returns 202 while that run is active and 200 after it is terminal. A second run, or a run on an archived incident, returns 409. The API diagnosis uses the offline M4 investigator. `scenario_id` selects a frozen world. `ground_truth` stays in the scenario file.
 
 ## Scenarios API
 

@@ -11,8 +11,10 @@ WallClock (budgets/timeouts/trace timestamps) and ScenarioClock (query time
 window) are injected separately.
 """
 
+import asyncio
 import json
-from collections.abc import Sequence
+import time
+from collections.abc import Awaitable, Callable, Sequence
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -110,6 +112,8 @@ async def investigate(
     wall_clock: ClockPort | None = None,
     scenario_clock: ClockPort | None = None,
     known_services: Sequence[str] | None = None,
+    on_event: Callable[[TraceEvent], Awaitable[None]] | None = None,
+    cancel_event: asyncio.Event | None = None,
 ) -> InvestigationResult:
     cfg = budget or InvestigationBudget()
     w_clock = wall_clock or WallClock()
@@ -123,16 +127,17 @@ async def investigate(
     tokens_out = 0
     model_rounds = 0
 
-    def _emit(event_type: TraceEventType, summary: str, **payload: Any) -> None:
-        events.append(
-            TraceEvent(
-                seq=len(events),
-                type=event_type,
-                created_at=w_clock.now(),
-                summary=summary,
-                payload=payload,
-            )
+    async def _emit(event_type: TraceEventType, summary: str, **payload: Any) -> None:
+        event = TraceEvent(
+            seq=len(events),
+            type=event_type,
+            created_at=w_clock.now(),
+            summary=summary,
+            payload=payload,
         )
+        events.append(event)
+        if on_event is not None:
+            await on_event(event)
 
     def _cost() -> float:
         return round(((tokens_in + tokens_out) / 1000.0) * cfg.cost_per_1k_tokens_usd, 6)
@@ -182,14 +187,14 @@ async def investigate(
         tokens_out += triage_resp.tokens_out
         resolved_service = _parse_inferred_service(triage_resp.content, topology)
         inferred_by_model = resolved_service is not None
-        _emit(
+        await _emit(
             TraceEventType.LLM_CALL,
             f"Model inferred missing service as {resolved_service!r}.",
             inferred_by_model=True,
             service=resolved_service,
         )
 
-    _emit(
+    await _emit(
         TraceEventType.RUN_STARTED,
         "Investigation started.",
         service=resolved_service,
@@ -202,7 +207,10 @@ async def investigate(
             verdict=Verdict.UNKNOWN,
             unresolved_questions=["Incident is missing service or valid time window."],
         )
-        _emit(TraceEventType.FINAL_REPORT, "Returned UNKNOWN due to missing service or window.")
+        await _emit(
+            TraceEventType.FINAL_REPORT,
+            "Returned UNKNOWN due to missing service or window.",
+        )
         return InvestigationResult(
             status="COMPLETED",
             report=unknown_report,
@@ -246,14 +254,30 @@ async def investigate(
 
     # 2. Investigate Loop
     while model_rounds < cfg.max_model_rounds:
+        if cancel_event is not None and cancel_event.is_set():
+            await _emit(TraceEventType.ERROR, "Run cancelled.", reason="cancelled")
+            return InvestigationResult(
+                status="FAILED",
+                report=None,
+                ledger_keys=ledger.keys(),
+                tool_calls=len(ledger.tool_calls),
+                model_rounds=model_rounds,
+                tokens_in=tokens_in,
+                tokens_out=tokens_out,
+                cost_usd=_cost(),
+                service_inferred_by_model=inferred_by_model,
+                resolved_service=resolved_service,
+                events=tuple(events),
+                failure_reason="cancelled",
+            )
         if _wall_exceeded():
-            _emit(
+            await _emit(
                 TraceEventType.GUARDRAIL_TRIGGERED,
                 "Wall-clock timeout exceeded.",
                 reason="wall_clock_timeout",
             )
             partial = _build_partial_report(board, "Wall-clock timeout reached before completion.")
-            _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on timeout.")
+            await _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on timeout.")
             return InvestigationResult(
                 status="TIMED_OUT",
                 report=partial,
@@ -270,13 +294,13 @@ async def investigate(
 
         budget_reason = _token_or_cost_exceeded()
         if budget_reason is not None:
-            _emit(
+            await _emit(
                 TraceEventType.GUARDRAIL_TRIGGERED,
                 f"Budget guardrail triggered: {budget_reason}.",
                 reason=budget_reason,
             )
             partial = _build_partial_report(board, f"Run stopped early: {budget_reason}.")
-            _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on budget exhaustion.")
+            await _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on budget exhaustion.")
             return InvestigationResult(
                 status="BUDGET_EXCEEDED",
                 report=partial,
@@ -300,7 +324,7 @@ async def investigate(
         step_data = _parse_json_dict(step_resp.content)
         action = step_data.get("action") if step_data else None
         decision_summary = str((step_data or {}).get("summary") or "Model step completed.")
-        _emit(
+        await _emit(
             TraceEventType.LLM_CALL,
             decision_summary,
             action=action,
@@ -308,7 +332,7 @@ async def investigate(
         )
 
         if step_data and isinstance(step_data.get("hypotheses"), list):
-            _apply_hypothesis_updates(board, step_data["hypotheses"], _emit)
+            await _apply_hypothesis_updates(board, step_data["hypotheses"], _emit)
 
         if action == "final_report" and step_data is not None and "report" in step_data:
             report_obj = step_data["report"]
@@ -327,7 +351,7 @@ async def investigate(
         # Duplicate tool-call guardrail
         cached = ledger.find_cached_call(tool_name, args_dict)
         if cached is not None:
-            _emit(
+            await _emit(
                 TraceEventType.GUARDRAIL_TRIGGERED,
                 f"Duplicate tool call suppressed: {tool_name}.",
                 reason="duplicate_tool_call",
@@ -351,7 +375,7 @@ async def investigate(
 
         # Tool-call budget check
         if len(ledger.tool_calls) >= cfg.max_tool_calls:
-            _emit(
+            await _emit(
                 TraceEventType.GUARDRAIL_TRIGGERED,
                 "Maximum tool call budget reached.",
                 reason="max_tool_calls",
@@ -361,7 +385,10 @@ async def investigate(
                 board,
                 f"Reached maximum of {cfg.max_tool_calls} tool calls before final report.",
             )
-            _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on tool budget exhaustion.")
+            await _emit(
+                TraceEventType.FINAL_REPORT,
+                "Emitted partial report on tool budget exhaustion.",
+            )
             return InvestigationResult(
                 status="BUDGET_EXCEEDED",
                 report=partial,
@@ -376,12 +403,13 @@ async def investigate(
                 events=tuple(events),
             )
 
-        _emit(
+        await _emit(
             TraceEventType.TOOL_CALL,
             f"Calling {tool_name}.",
             tool=tool_name,
             arguments=args_dict,
         )
+        started_call = time.perf_counter()
         tool_result, service_used, range_used = await _dispatch_tool(
             tool_name=tool_name,
             args_dict=args_dict,
@@ -389,6 +417,7 @@ async def investigate(
             default_range=window,
             tools=async_tools,
         )
+        latency_ms = round((time.perf_counter() - started_call) * 1000, 3)
         added_items = ledger.record_tool_call(
             tool=tool_name,
             service=service_used,
@@ -396,16 +425,21 @@ async def investigate(
             arguments=args_dict,
             result=tool_result,
         )
-        _emit(
+        await _emit(
             TraceEventType.TOOL_RESULT,
             tool_result.summary,
             tool=tool_name,
+            arguments=args_dict,
             status=tool_result.status.value,
-            evidence_keys=tool_result.evidence_keys,
+            evidence_keys=list(tool_result.evidence_keys),
             truncated=tool_result.truncated,
+            output=tool_result.model_dump(mode="json"),
+            service=service_used,
+            time_range=range_used.model_dump(mode="json"),
+            latency_ms=latency_ms,
         )
         for item in added_items:
-            _emit(
+            await _emit(
                 TraceEventType.EVIDENCE_ADDED,
                 f"Added evidence key {item.evidence_key}.",
                 evidence_key=item.evidence_key,
@@ -423,7 +457,7 @@ async def investigate(
             or no_evidence_streak >= cfg.max_no_evidence_steps
         )
         if no_evidence_streak >= cfg.max_no_evidence_steps:
-            _emit(
+            await _emit(
                 TraceEventType.GUARDRAIL_TRIGGERED,
                 "Consecutive steps yielded no new evidence keys; forcing convergence.",
                 reason="no_new_evidence_convergence",
@@ -444,13 +478,13 @@ async def investigate(
         )
 
     if raw_final_report is None:
-        _emit(
+        await _emit(
             TraceEventType.GUARDRAIL_TRIGGERED,
             "Maximum model rounds reached.",
             reason="max_model_rounds",
         )
         partial = _build_partial_report(board, "Maximum model rounds reached.")
-        _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on max model rounds.")
+        await _emit(TraceEventType.FINAL_REPORT, "Emitted partial report on max model rounds.")
         return InvestigationResult(
             status="BUDGET_EXCEEDED",
             report=partial,
@@ -474,7 +508,7 @@ async def investigate(
     first_illegal_rate = first_check.illegal_citation_rate
 
     if first_check.valid and first_check.report is not None:
-        _emit(
+        await _emit(
             TraceEventType.FINAL_REPORT,
             f"Final report verified with verdict {first_check.report.verdict.value}.",
             verdict=first_check.report.verdict.value,
@@ -500,7 +534,7 @@ async def investigate(
         )
 
     # 4. Single report-regeneration retry (0 tool calls allowed)
-    _emit(
+    await _emit(
         TraceEventType.GUARDRAIL_TRIGGERED,
         f"First report rejected by verifier: {first_check.error}",
         reason="report_verification_failed",
@@ -524,7 +558,7 @@ async def investigate(
     model_rounds += 1
     tokens_in += retry_resp.tokens_in
     tokens_out += retry_resp.tokens_out
-    _emit(
+    await _emit(
         TraceEventType.LLM_CALL,
         "Regenerated final report after verifier rejection.",
         action="regenerate_final_report",
@@ -540,7 +574,7 @@ async def investigate(
 
     second_check = verifier.verify_raw(retry_raw)
     if second_check.valid and second_check.report is not None:
-        _emit(
+        await _emit(
             TraceEventType.FINAL_REPORT,
             f"Retry report verified with verdict {second_check.report.verdict.value}.",
             verdict=second_check.report.verdict.value,
@@ -565,7 +599,7 @@ async def investigate(
             events=tuple(events),
         )
 
-    _emit(
+    await _emit(
         TraceEventType.ERROR,
         f"Second report failed verification: {second_check.error}",
         error=second_check.error,
@@ -678,7 +712,9 @@ def _parse_inferred_service(raw: str, topology: tuple[str, ...]) -> str | None:
     return topology[0] if topology else None
 
 
-def _apply_hypothesis_updates(board: HypothesisBoard, updates: list[Any], emit_fn: Any) -> None:
+async def _apply_hypothesis_updates(
+    board: HypothesisBoard, updates: list[Any], emit_fn: Any
+) -> None:
     for item in updates:
         if not isinstance(item, dict):
             continue
@@ -705,7 +741,7 @@ def _apply_hypothesis_updates(board: HypothesisBoard, updates: list[Any], emit_f
             supporting_evidence=supp,
             contradicting_evidence=contra,
         )
-        emit_fn(
+        await emit_fn(
             TraceEventType.HYPOTHESIS_UPDATED,
             f"Hypothesis {cause.value} -> {status.value} ({confidence:.2f}).",
             cause=cause.value,
