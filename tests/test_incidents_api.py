@@ -70,3 +70,28 @@ def test_only_a_person_can_resolve_an_incident(client: TestClient) -> None:
     assert rejected.status_code == 422
     assert resolved.status_code == 200
     assert resolved.json()["status"] == "RESOLVED"
+
+
+@pytest.mark.parametrize("field", ["title", "description", "metadata", "status"])
+def test_patch_rejects_null_for_required_fields(client: TestClient, field: str) -> None:
+    created = client.post("/v1/incidents", json=INCIDENT, headers=HEADERS).json()
+    url = f"/v1/incidents/{created['id']}"
+    before = client.get(url, headers=HEADERS).json()
+    response = client.patch(url, json={field: None}, headers=HEADERS)
+    assert response.status_code == 422
+    assert client.get(url, headers=HEADERS).json() == before
+
+
+def test_patch_allows_omission_and_clearing_nullable_fields(client: TestClient) -> None:
+    created = client.post("/v1/incidents", json=INCIDENT, headers=HEADERS).json()
+    url = f"/v1/incidents/{created['id']}"
+    unchanged = client.patch(url, json={}, headers=HEADERS)
+    assert unchanged.status_code == 200
+    for field in ("title", "description", "metadata", "status", "service"):
+        assert unchanged.json()[field] == created[field]
+
+    fields = ("service", "occurred_at", "detected_at", "user_severity")
+    cleared = client.patch(url, json=dict.fromkeys(fields), headers=HEADERS)
+    assert cleared.status_code == 200
+    assert all(cleared.json()[field] is None for field in fields)
+    assert cleared.json()["title"] == created["title"]

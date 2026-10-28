@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Literal, NoReturn
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.api.auth import require_api_key
 from app.persistence.models import IncidentRow
@@ -44,6 +44,14 @@ class IncidentPatch(BaseModel):
     user_severity: str | None = None
     metadata: dict[str, Any] | None = None
     status: Literal["RESOLVED"] | None = None
+
+    @field_validator("title", "description", "metadata", "status")
+    @classmethod
+    def reject_explicit_null(cls, value: Any) -> Any:
+        # Defaults are not validated: omitted fields remain valid for PATCH.
+        if value is None:
+            raise ValueError("Field must not be null.")
+        return value
 
 
 def _public(row: IncidentRow) -> Incident:

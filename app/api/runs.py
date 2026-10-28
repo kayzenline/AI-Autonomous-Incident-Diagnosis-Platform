@@ -115,6 +115,8 @@ async def get_run_events(
         while True:
             if await request.is_disconnected():
                 return
+            # Observe completion before fetching its committed final events.
+            current = await get_run(run_id)
             rows = await events_after(run_id, cursor)
             for row in rows:
                 cursor = row.seq
@@ -130,7 +132,6 @@ async def get_run_events(
                     default=str,
                 )
                 yield f"id: {row.seq}\nevent: {row.type}\ndata: {data}\n\n"
-            current = await get_run(run_id)
             if current.status not in ACTIVE and not rows:
                 return
             await asyncio.sleep(0.05)

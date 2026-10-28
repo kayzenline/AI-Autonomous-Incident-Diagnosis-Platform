@@ -2,6 +2,7 @@ import asyncio
 import time
 
 import pytest
+from app.api import runs as runs_api
 from app.core.report import DiagnosisReport
 from app.core.taxonomy import Verdict
 from app.executor import service as executor
@@ -10,6 +11,7 @@ from app.persistence.models import EvidenceRow, RunEventRow, ToolCallRow
 from app.persistence.outcomes import validate_outcome
 from app.persistence.session import get_sessionmaker
 from app.persistence.store import (
+    cancel_run,
     create_incident,
     fail_runs_after_restart,
     finish_run,
@@ -194,15 +196,74 @@ def test_closing_the_stream_does_not_cancel_the_run(client: TestClient) -> None:
         json={"scenario_id": "cpu-saturation-checkout"},
         headers=HEADERS,
     )
-    with client.stream(
-        "GET",
-        f"/v1/runs/{started.json()['id']}/events",
-        headers=HEADERS,
-    ) as response:
-        assert response.status_code == 200
-    executor.pause_runs = False
-    finished = _wait(client, started.json()["id"])
+    run_id = started.json()["id"]
+
+    async def disconnect() -> None:
+        response_started = asyncio.Event()
+        disconnected = False
+
+        async def receive() -> dict:
+            nonlocal disconnected
+            await response_started.wait()
+            disconnected = True
+            return {"type": "http.disconnect"}
+
+        async def send(message: dict) -> None:
+            if message["type"] == "http.response.start":
+                assert message["status"] == 200
+                response_started.set()
+
+        scope = {
+            "type": "http",
+            "asgi": {"version": "3.0", "spec_version": "2.3"},
+            "http_version": "1.1",
+            "method": "GET",
+            "scheme": "http",
+            "path": f"/v1/runs/{run_id}/events",
+            "query_string": b"",
+            "headers": [(b"x-api-key", b"dev-key")],
+            "client": ("testclient", 123),
+            "server": ("testserver", 80),
+        }
+        # Unlike TestClient's buffered transport, disconnect independently of EOF.
+        await asyncio.wait_for(app(scope, receive, send), timeout=5)
+        assert disconnected
+        assert (await get_run(run_id)).status in {"PENDING", "RUNNING"}
+
+    try:
+        client.portal.call(disconnect)
+    finally:
+        executor.pause_runs = False
+    finished = _wait(client, run_id)
     assert finished["status"] == "COMPLETED"
+
+
+def test_stream_drains_event_committed_after_empty_batch(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    incident_id = _create(client)
+    # Keep the run active without scheduling a worker.
+    monkeypatch.setattr(runs_api, "schedule", lambda run_id: None)
+    started = client.post(f"/v1/incidents/{incident_id}/runs", json={}, headers=HEADERS)
+    run_id = started.json()["id"]
+    original = runs_api.events_after
+    raced = False
+
+    async def events_with_race(run_id: str, cursor: int) -> list[RunEventRow]:
+        nonlocal raced
+        rows = await original(run_id, cursor)
+        if not raced:
+            assert rows == []
+            raced = True
+            await cancel_run(run_id)
+        return rows
+
+    monkeypatch.setattr(runs_api, "events_after", events_with_race)
+    response = client.get(f"/v1/runs/{run_id}/events", headers=HEADERS)
+    assert response.status_code == 200
+    assert raced
+    assert response.text.count("id: 0\n") == 1
+    assert "Run cancelled." in response.text
 
 
 def test_restart_fails_leftover_active_runs() -> None:
