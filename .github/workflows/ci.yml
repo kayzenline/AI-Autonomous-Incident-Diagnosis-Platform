@@ -10,6 +10,7 @@ permissions:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -23,3 +24,5 @@ jobs:
         run: ruff format --check app tests
       - name: Test
         run: pytest
+      - name: Frozen rule baselines and cassette replay (offline)
+        run: python -m app.eval check

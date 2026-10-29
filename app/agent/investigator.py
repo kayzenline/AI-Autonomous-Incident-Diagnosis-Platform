@@ -30,6 +30,7 @@ from app.agent.verifier import ReadOnlyVerifier
 from app.core.clock import ClockPort, WallClock
 from app.core.report import DiagnosisReport, Hypothesis, Recommendation
 from app.core.taxonomy import CAUSE_SUMMARY, Cause, Verdict
+from app.core.telemetry import traced
 from app.core.window import TimeRange, default_window
 from app.llm.port import LLMMessage, LLMPort, LLMRequest
 from app.schemas.incident import IncidentCreate
@@ -103,6 +104,7 @@ INVESTIGATOR_SYSTEM_PROMPT = (
 )
 
 
+@traced("agentops.investigate")
 async def investigate(
     incident: IncidentCreate,
     tools: ToolPort | AsyncToolPort,

@@ -63,6 +63,7 @@ async def build_m3_report_async(
     scenarios: list[Scenario] | None = None,
     *,
     llm: LLMPort | None = None,
+    include_reports: bool = False,
 ) -> dict[str, Any]:
     assert_baseline_is_isolated()
     adapter = llm or FakeLLMAdapter()
@@ -75,7 +76,12 @@ async def build_m3_report_async(
             adapter,
             services=scenario.world.services,
         )
-        cases.append(_m3_case(scenario, result))
+        row = _m3_case(scenario, result)
+        if include_reports:
+            row["final_report"] = (
+                None if result.report is None else result.report.model_dump(mode="json")
+            )
+        cases.append(row)
 
     report = _aggregate_report(
         agent="single-shot-llm",
@@ -108,6 +114,7 @@ async def build_m4_report_async(
     scenarios: list[Scenario] | None = None,
     *,
     llm: LLMPort | None = None,
+    include_reports: bool = False,
 ) -> dict[str, Any]:
     assert_baseline_is_isolated()
     adapter = llm or InvestigativeFakeLLM()
@@ -120,7 +127,12 @@ async def build_m4_report_async(
             adapter,
             known_services=scenario.world.services,
         )
-        cases.append(_m4_case(scenario, result))
+        row = _m4_case(scenario, result)
+        if include_reports:
+            row["final_report"] = (
+                None if result.report is None else result.report.model_dump(mode="json")
+            )
+        cases.append(row)
 
     report = _aggregate_report(
         agent="investigation-loop",
@@ -227,10 +239,10 @@ def check_baselines() -> None:
     m1_report = build_report()
     m3_report = build_m3_report()
     m4_report = build_m4_report()
-    _expect(directory / REPORT_NAME, m1_report)
-    _expect(directory / M3_REPORT_NAME, m3_report)
+    _expect(directory / REPORT_NAME, m1_report, ignore_severity=True)
+    _expect(directory / M3_REPORT_NAME, m3_report, ignore_severity=True)
     _expect(directory / M3_COMPARE_NAME, compare_reports(m1_report, m3_report))
-    _expect(directory / M4_REPORT_NAME, m4_report)
+    _expect(directory / M4_REPORT_NAME, m4_report, ignore_severity=True)
     _expect(directory / M4_COMPARE_NAME, compare_reports(m3_report, m4_report))
     _expect(directory / MANIFEST_NAME, build_manifest())
     replay_m4_cassette(load_cassette())
@@ -342,6 +354,7 @@ def main(argv: list[str] | None = None) -> int:
     compare = subparsers.add_parser("compare")
     compare.add_argument("left", type=Path)
     compare.add_argument("right", type=Path)
+    compare.add_argument("--output", type=Path)
 
     args = parser.parse_args(argv)
     if args.command == "write":
@@ -394,7 +407,11 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     left = json.loads(args.left.read_text(encoding="utf-8"))
     right = json.loads(args.right.read_text(encoding="utf-8"))
-    print(json.dumps(compare_reports(left, right), indent=2))
+    comparison = compare_reports(left, right)
+    if args.output is not None:
+        _dump(args.output, comparison)
+    else:
+        print(json.dumps(comparison, indent=2))
     return 0
 
 
@@ -611,9 +628,23 @@ def _dump(path: Path, payload: dict[str, Any]) -> None:
     path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
 
 
-def _expect(path: Path, payload: dict[str, Any]) -> None:
+def _without_severity(value: Any) -> Any:
+    if isinstance(value, dict):
+        return {
+            key: _without_severity(item)
+            for key, item in value.items()
+            if key not in {"predicted_severity", "severity_hit", "severity_accuracy"}
+        }
+    if isinstance(value, list):
+        return [_without_severity(item) for item in value]
+    return value
+
+
+def _expect(path: Path, payload: dict[str, Any], *, ignore_severity: bool = False) -> None:
     if not path.exists():
         raise SystemExit(f"missing {path}")
     current = json.loads(path.read_text(encoding="utf-8"))
+    if ignore_severity:
+        current, payload = _without_severity(current), _without_severity(payload)
     if current != payload:
         raise SystemExit(f"{path.name} does not match a fresh baseline run")

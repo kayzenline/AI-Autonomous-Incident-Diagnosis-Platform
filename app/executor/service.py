@@ -9,6 +9,7 @@ import asyncio
 from app.agent.investigator import InvestigationResult, investigate
 from app.agent.ledger import TraceEvent
 from app.core.clock import ScenarioClock
+from app.core.telemetry import traced
 from app.eval.scenario import frozen_dir, load_scenario
 from app.llm.adapters.investigator_fake import InvestigativeFakeLLM
 from app.persistence.models import IncidentRow
@@ -47,6 +48,7 @@ def request_cancel(run_id: str) -> None:
         event.set()
 
 
+@traced("agentops.run")
 async def execute(run_id: str) -> None:
     started = await mark_running(run_id)
     if not started:
