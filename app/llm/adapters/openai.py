@@ -12,6 +12,7 @@ from typing import Any
 
 from openai import OpenAI
 
+from app.core.telemetry import traced
 from app.llm.port import LLMRequest, LLMResponse
 
 DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
@@ -33,6 +34,7 @@ class OpenAIAdapter:
         self._client = client
         self._sync_fn = sync_fn
 
+    @traced("agentops.llm")
     async def generate(self, request: LLMRequest) -> LLMResponse:
         return await asyncio.to_thread(self._complete_sync, request)
 

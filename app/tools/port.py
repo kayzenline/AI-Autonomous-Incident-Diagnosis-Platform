@@ -10,6 +10,7 @@ import asyncio
 import inspect
 from typing import Protocol
 
+from app.core.telemetry import traced
 from app.tools.contract import (
     QueryMetricsInput,
     SearchLogsInput,
@@ -69,21 +70,27 @@ class ThreadedToolPort:
         raw = getattr(self._tools, "services", ())
         return tuple(raw)
 
+    @traced("agentops.tool.query_metrics")
     async def query_metrics(self, request: QueryMetricsInput) -> ToolResult:
         return await asyncio.to_thread(self._tools.query_metrics, request)
 
+    @traced("agentops.tool.search_logs")
     async def search_logs(self, request: SearchLogsInput) -> ToolResult:
         return await asyncio.to_thread(self._tools.search_logs, request)
 
+    @traced("agentops.tool.get_service_status")
     async def get_service_status(self, request: ServiceWindowInput) -> ToolResult:
         return await asyncio.to_thread(self._tools.get_service_status, request)
 
+    @traced("agentops.tool.get_recent_changes")
     async def get_recent_changes(self, request: ServiceWindowInput) -> ToolResult:
         return await asyncio.to_thread(self._tools.get_recent_changes, request)
 
+    @traced("agentops.tool.get_dependency_health")
     async def get_dependency_health(self, request: ServiceWindowInput) -> ToolResult:
         return await asyncio.to_thread(self._tools.get_dependency_health, request)
 
+    @traced("agentops.tool.query_db_health")
     async def query_db_health(self, request: ServiceWindowInput) -> ToolResult:
         return await asyncio.to_thread(self._tools.query_db_health, request)
 

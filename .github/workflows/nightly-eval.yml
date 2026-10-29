@@ -1,0 +1,62 @@
+name: nightly-eval
+
+on:
+  schedule:
+    - cron: "17 16 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-eval
+  cancel-in-progress: false
+
+jobs:
+  measured-eval:
+    if: vars.EVAL_NIGHTLY_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_MODEL: ${{ vars.EVAL_MODEL }}
+      EVAL_REPEATS: ${{ vars.EVAL_REPEATS }}
+      EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install
+        run: pip install -e .
+      - name: Validate explicit experiment settings
+        run: |
+          mkdir -p eval-results
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+          required = ("OPENAI_API_KEY", "OPENAI_MODEL", "EVAL_REPEATS", "EVAL_JUDGE_MODEL")
+          missing = [name for name in required if not os.environ.get(name)]
+          k = os.environ.get("EVAL_REPEATS", "")
+          if missing or not k.isdigit() or int(k) < 2:
+              Path("eval-results/report.json").write_text(json.dumps({
+                  "status": "configuration_error",
+                  "missing": missing,
+                  "repeats_valid": k.isdigit() and int(k) >= 2,
+              }))
+              raise SystemExit("Configure model, judge model, credentials, and repeats >= 2.")
+          PY
+      - name: Measure M3 and M4 (non-gating)
+        run: |
+          python -m app.eval.nightly --provider openai \
+            --repeats "$EVAL_REPEATS" --judge-model "$EVAL_JUDGE_MODEL" \
+            --output eval-results
+      - name: Retain measurements even on failure
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: nightly-eval-${{ github.sha }}-${{ github.run_attempt }}
+          path: eval-results/
+          if-no-files-found: warn
+          retention-days: 30

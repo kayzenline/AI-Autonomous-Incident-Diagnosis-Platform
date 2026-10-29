@@ -20,6 +20,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.core.report import DiagnosisReport, cited_keys
 from app.core.taxonomy import CAUSE_CATEGORY, Verdict
+from app.core.telemetry import traced
 from app.core.window import TimeRange, default_window
 from app.llm.port import LLMMessage, LLMPort, LLMRequest
 from app.schemas.incident import IncidentCreate
@@ -66,6 +67,7 @@ class SingleShotResult(BaseModel):
     failure_reason: str | None = None
 
 
+@traced("agentops.single_shot")
 async def diagnose_single_shot(
     incident: IncidentCreate,
     tools: ToolPort | AsyncToolPort,

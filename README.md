@@ -181,3 +181,56 @@ export API_KEY=dev-key
 uvicorn app.main:app --reload
 curl -H "X-API-Key: $API_KEY" http://127.0.0.1:8000/v1/scenarios
 ```
+
+## M5 evaluation and tracing
+
+PR CI runs unit tests and `python -m app.eval check` without live model credentials.
+The gate checks frozen-file hashes, rule/fake-model baselines, citation validation,
+and cassette replay. Severity metrics are retained in reports but excluded from
+baseline score comparisons; cassette replay still checks exact recorded behavior.
+A replay protects parsing, evidence handling and orchestration, not prompt quality.
+
+Nightly measurements run in a separate scheduled/manual workflow, never on
+`pull_request`. Enable it with repository variable `EVAL_NIGHTLY_ENABLED=true`,
+secret `OPENAI_API_KEY`, and explicit variables `EVAL_MODEL`, `EVAL_JUDGE_MODEL`
+and `EVAL_REPEATS` (integer >= 2). There is no assumed experiment repeat count.
+The schedule is 16:17 UTC daily. Do not make the `measured-eval` job a required
+branch check. Results are retained as GitHub Actions artifacts for 30 days,
+including completed repeats if a later model call fails.
+
+For an offline smoke test, or an explicitly configured live measurement:
+
+```bash
+python -m app.eval.nightly --provider fake --repeats 2 --output work/eval-smoke
+# Set OPENAI_API_KEY and OPENAI_MODEL before using the live provider.
+python -m app.eval.nightly --provider openai --repeats "$EVAL_REPEATS" \
+  --judge-model "$EVAL_JUDGE_MODEL" --output work/eval-live
+python -m app.eval compare old.json new.json --output comparison.json
+```
+
+The nightly JSON includes frozen hashes, revision (in Actions), model names,
+every repeat's accepted report, Top-1/Top-3, evidence recall/precision,
+first-output illegal-citation rate, verdict accuracy, FAULT severity and
+`agreement@k`. The headline is mean M4 Top-1 minus mean M3 Top-1.
+`agreement@k` is the modal valid answer count divided by k, averaged across
+scenarios. The answer is verdict plus first category/cause for FAULT, verdict
+alone otherwise; missing reports count only in the denominator. Consistently
+wrong answers can have agreement 1. Confidence, prose and severity do not define
+answer identity. Judge commentary examines first-repeat reports only, cannot
+verify raw observations, and never changes deterministic scores.
+
+Evidence precision follows the canonical `docs/requirements.md` FR-8: when
+both expected and cited evidence are empty it is undefined and excluded from
+the average; absent citations with expected evidence score zero. This is more
+specific than issue #16's older acceptance wording. Existing frozen baselines
+remain unchanged. Fake runs are labelled `offline-harness`; they are not real
+model accuracy measurements.
+
+OpenTelemetry traces cover API executor runs, M3/M4 diagnoses, real model calls,
+and thread-offloaded tools. Export is disabled unless
+`OTEL_EXPORTER_OTLP_ENDPOINT` (collector base URL) or
+`OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (full traces URL) is set. Export uses
+[OTLP HTTP/protobuf](https://opentelemetry.io/docs/languages/python/exporters/).
+`OTEL_SDK_DISABLED=true` disables setup. Spans carry timing, outcome, token/tool
+counts and error types; they do not attach incident text, prompts, tool data,
+reports, credentials or exception messages.
