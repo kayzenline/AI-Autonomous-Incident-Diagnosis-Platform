@@ -1,9 +1,10 @@
 # AgentOps 工程交接文档（Handoff & Engineering Rationale）
 
-> **更新日期**：2026-10-24  
-> **当前主分支状态**：`main`（已合并至 PR `#34`，65/65 测试通过，`python -m app.eval check` 全绿）  
-> **已完成里程碑**：`M0`（基础骨架与契约）、`M1`（场景模拟器与规则基线）、`M3`（单次调用 LLM 对照组）、`M4`（手写多步调查循环 + Cassette 回放 + SRE 诊断 CLI）  
-> **待完成里程碑**：`M2`（Issue `#15`：PostgreSQL 持久化与异步 SSE 运行流）、`M5`（Issue `#16`：Nightly 评测、`agreement@k` 与 OpenTelemetry）
+> **更新日期**：2026-10-29
+> **当前主分支状态**：M2（PR #36）与 M5 工具链（PR #37）已合并，相关 CI 通过。
+> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run、M5 离线门禁/夜间评测工具链/OTel。
+> **仍需验收**：M2 真实 PostgreSQL 迁移与进程重启链路；M5 真实模型配置与首份测量报告。M6 尚未实现。
+> **分数口径**：下文 M3/M4 的 0.85/1.00 来自 fake adapter 与冻结场景，是离线 harness 检查，不是真实模型准确率。
 
 ---
 
@@ -17,8 +18,8 @@
 | **P0/P1 前置改造** | `#29, #30` / PR `#33` | 清理 29 个场景 `incident.title`/`description` 剧透词；新增 `AsyncToolPort` 与 `ThreadedToolPort` | ✅ 已合入 `main` |
 | **M3：单次 LLM 对照组** | `#13, #27` / PR `#33` (`8a2d2b8`) | `app/llm/port.py`、`OpenAIAdapter`、`FakeLLMAdapter`、`app/agent/single_shot.py`、`evals/baselines/m3-single-shot.json`（Top-1 `0.85`） | ✅ 已合入 `main` |
 | **M4：多步调查循环 + Cassette** | `#14, #28` / PR `#34` (`98eda68`) | `EvidenceLedger`、`HypothesisBoard`、`ReadOnlyVerifier`、`investigate()`、`InvestigativeFakeLLM`、`app/eval/cassette.py`、`evals/baselines/m4-agent.json`（Top-1 `1.00`）、SRE `inspect` / `replay` CLI | ✅ 已合入 `main` |
-| **M2：持久化与异步流** | Issue `#15` | Postgres + Alembic、`Incident`/`Run`/`RunEvent` 表、幂等与并发锁、SSE `Last-Event-ID` | ⏳ 待开发 |
-| **M5：Nightly 评测与可观测性** | Issue `#16` | Nightly workflow、`agreement@k`、LLM Judge 附加评论、OpenTelemetry 埋点 | ⏳ 待开发 |
+| **M2：持久化与异步流** | Issue #15 / PR #36 | Postgres + Alembic、Incident/Run/RunEvent、幂等、SSE、CLI | 代码已合并，补充部署验收 |
+| **M5：Nightly 评测与可观测性** | Issue #16 / PR #37 | Nightly workflow、agreement@k、judge 评论、OTel | 工具链已合并，待真实测量 |
 
 ---
 
@@ -128,37 +129,38 @@ M4 是整个平台的核心大脑。我们没有使用黑盒框架，而是手�
 
 ---
 
-## 三、 下一步接手指南（剩余 2 个 Issue 的落地方案）
+## 三、接手顺序：验收 M2，完成 M5 实测，再进入 M6
 
-目前仓库只剩 **Issue `#15`（M2：持久化与异步流）** 和 **Issue `#16`（M5：Nightly 评测与可观测性）**。建议按以下顺序推进：
+### 1. M2 部署验收
 
-### 1. 下一步优先：Milestone M2（Issue `#15`：Persist incidents and async runs）
-- **目标**：引入 PostgreSQL 与 Alembic 迁移，将目前的内存级 `investigate()` 接入持久化存储与异步 HTTP/SSE 接口。
-- **关键验收要求与实现要点**：
-  1. **数据库表设计（SQLAlchemy 2.0 Async + asyncpg + Alembic）**：
-     - `incidents` 表：存储 `id`、`title`、`description`、`service`、`occurred_at`、`detected_at`、`user_severity`（调用方标签，非诊断 `severity`）、`status`（如 `OPEN` / `ARCHIVED`）。
-     - `runs` 表：存储 `id`、`incident_id`、`idempotency_key`、`status`（`PENDING | RUNNING | COMPLETED | FAILED | TIMED_OUT | BUDGET_EXCEEDED | CANCELLED`）、`final_report`（JSONB）、Token/Cost/ToolCalls 统计。
-     - `run_events`、`tool_calls`、`evidence` 表：注意验收条件要求 **`ToolCall` 和 `Evidence` 必须与对应的 `RunEvent` 在同一个数据库事务中写入**；**严禁**创建旧版废弃的 `DiagnosticStep` / `DiagnosticRun` 模型或 `GET /runs/{id}/steps` 接口。
-  2. **幂等与并发控制（`POST /v1/incidents/{id}/runs`）**：
-     - 新建运行返回 `202 Accepted`。
-     - 同一 `incident_id` + 相同 `Idempotency-Key`：若运行处于 `PENDING` / `RUNNING` 返回 `202`，若已进入终态返回 `200`（复用已有 run）。
-     - 同一 `incident_id` 使用不同或缺失 `Idempotency-Key` 发起第 2 个运行，且当前已有 `PENDING` / `RUNNING` 运行时，返回 `409 Conflict`；归档（`ARCHIVED`）的 Incident 也返回 `409 Conflict`。
-  3. **进程内异步执行与重启恢复**：
-     - 使用 `asyncio.create_task` 在进程内调度 [`investigate`](file:///Users/hayashikeibun/Personal/AI%20Autonomous%20Incident%20Diagnosis%20Platform/app/agent/investigator.py#L103-L598)，并将 `_emit` 产生的时间线事件实时写入 `run_events`。
-     - FastAPI `lifespan` 启动时扫描残留的 `RUNNING` 状态记录，统一标记为 `FAILED`（`failure_reason="restart"`）。
-     - `BUDGET_EXCEEDED` 与 `TIMED_OUT` 保存部分报告（`investigate()` 已原生支持返回 partial report）；`CANCELLED` 的 `final_report` 必须置空（`None`）。
-  4. **查询与 SSE 流式重放接口**：
-     - `GET /v1/runs/{id}`：返回运行状态与 `final_report`。
-     - `GET /v1/runs/{id}/events`：支持 SSE 从 `seq=0` 重放，并支持 `Last-Event-ID` 断点续传。
-     - 提供一键 CLI 命令提交 Incident、跟随 SSE 事件流并打印最终报告。
+主要实现已在 PR #36 合并，不需要重新开发。Issue #15 的收尾证据由
+`tests/test_m2_acceptance.py` 提供：Alembic 创建数据库，真实 uvicorn 子进程
+启动，CLI 提交并读取 SSE，保存诊断结果，然后停止进程、启动另一进程，
+检查历史报告和事件可查、Last-Event-ID 续传、幂等，以及残留 PENDING/RUNNING
+转为 FAILED(restart)。同时验证活动运行冲突、归档事件拒绝新运行及证据关联。
 
-### 2. 收官阶段：Milestone M5（Issue `#16`：Measured eval on pull requests and nightly runs）
-- **目标**：完善评测指标（`agreement@k`、可选 Nightly LLM Judge）与 OpenTelemetry 埋点。
-- **关键验收要求与实现要点**：
-  1. **PR Gate vs Nightly Job 分离**：
-     - PR CI（`.github/workflows/ci.yml`）当前已通过 `python -m app.eval check` 覆盖单元测试、M1 规则基线、M4 Cassette 回放与引用检查，不调用真实外部模型。
-     - 新增 `.github/workflows/nightly-eval.yml`：定时或手动触发，汇报 `M4 Top-1 - M3 Top-1` 核心指标、Top-1/Top-3、Evidence Recall/Precision、`first_output_illegal_citation_rate`、`FAULT` 场景 `severity_accuracy` 以及 **`agreement@k`**（同一场景重复运行 $k$ 次结论一致的比例，注意不是 `pass@k`）。
-  2. **红鲱鱼引用计分细节检查**：
-     - 核对 `app/eval/score.py` 中对场景红鲱鱼（Red-Herring）证据键的处理与 `#16` 验收标准完全一致。
-  3. **OpenTelemetry 接入**：
-     - 在 `investigate()`、工具调用与 HTTP 层增加 OpenTelemetry Span 埋点，使每次诊断运行具备标准分布式追踪能力。
+普通 pytest 使用临时 SQLite；CI 的 postgres-acceptance job 使用仓库的
+docker-compose.yml 启动 PostgreSQL 16，执行同一验收。仅将
+M2_TEST_DATABASE_URL 指向专用测试库；测试会迁移并写入诊断数据。
+
+```bash
+docker compose up -d --wait
+M2_TEST_DATABASE_URL=postgresql+asyncpg://agentops:agentops@localhost:5432/agentops   .venv/bin/pytest -q tests/test_m2_acceptance.py
+```
+
+归档由 archived_at 表示，不存在 ARCHIVED 状态。部分报告、取消、
+ToolCall/Evidence 事务与引用规则还由现有单元测试覆盖。
+
+### 2. M5 首次真实测量
+
+PR #37 已提供离线门禁、夜间报告、agreement@k、judge 评论与 OTel。
+先明确供应商、模型、重复次数和 judge 模型，配置 Actions secret/variables，
+再手动运行 nightly-eval 并核查报告。配置方法见 README。
+保留模型、提交、冻结场景哈希和所有重复报告；不能把 fake smoke 当成实测。
+
+### 3. M6 记忆消融
+
+接下来才引入 MemoryItem、反馈信任、检索和跨 Run 继承。
+先保留 M5 无记忆的真实对照，再做无记忆/情景记忆/情景+知识库消融。
+遵循 requirements.md FR-7：仅晋升实际引用的记忆，污染和陈旧记忆必须
+接受当前证据验证；评测不继承前一次 Run，也不写入 MemoryItem。
