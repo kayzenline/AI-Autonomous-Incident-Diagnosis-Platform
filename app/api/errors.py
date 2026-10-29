@@ -15,6 +15,7 @@ _STATUS_CODES = {
     401: "unauthorized",
     404: "not_found",
     405: "method_not_allowed",
+    409: "conflict",
     422: "validation_error",
     500: "internal_error",
 }
