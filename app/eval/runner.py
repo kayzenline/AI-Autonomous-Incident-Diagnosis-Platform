@@ -99,6 +99,8 @@ async def build_m3_report_async(
             if case["status"] == "COMPLETED"
         ]
     )
+    if include_reports:
+        report["response_models"] = sorted(getattr(adapter, "observed_models", ()))
     return report
 
 
@@ -152,6 +154,8 @@ async def build_m4_report_async(
             if case["status"] == "COMPLETED"
         ]
     )
+    if include_reports:
+        report["response_models"] = sorted(getattr(adapter, "observed_models", ()))
     return report
 
 

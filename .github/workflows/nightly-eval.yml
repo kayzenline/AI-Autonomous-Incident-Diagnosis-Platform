@@ -14,11 +14,13 @@ concurrency:
 
 jobs:
   measured-eval:
-    if: vars.EVAL_NIGHTLY_ENABLED == 'true'
+    if: github.event_name == 'workflow_dispatch' || vars.EVAL_NIGHTLY_ENABLED == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      OPENAI_BASE_URL: ${{ vars.EVAL_BASE_URL }}
+      DEEPSEEK_THINKING: ${{ vars.EVAL_DEEPSEEK_THINKING }}
       OPENAI_MODEL: ${{ vars.EVAL_MODEL }}
       EVAL_REPEATS: ${{ vars.EVAL_REPEATS }}
       EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL }}

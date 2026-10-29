@@ -12,6 +12,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from app.core.telemetry import configure_telemetry, flush_telemetry, traced
 from app.eval.runner import (
@@ -143,6 +144,15 @@ async def run_nightly(
         "provider": provider,
         "measurement": "live-model" if provider == "openai" else "offline-harness",
         "requested_repeats": repeats,
+        "model_settings": {
+            "api_host": (
+                urlsplit(os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").hostname
+                if provider == "openai"
+                else None
+            ),
+            "temperature": 0.0,
+            "deepseek_thinking": os.getenv("DEEPSEEK_THINKING") or None,
+        },
         "manifest": manifest,
         "scenario_ids": sorted(s.id for s in selected),
         "runs": {"m3": [], "m4": []},
