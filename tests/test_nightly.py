@@ -38,6 +38,7 @@ def test_nightly_fake_records_repeats_and_headline(tmp_path) -> None:
         assert len(report["runs"][version]) == 2
         summary = report["summary"][version]
         assert summary["observation_count"] == 4
+        assert summary["status_counts"] == {"COMPLETED": 4}
         assert summary["agreement@k"] == 1
         assert "severity_accuracy" in summary
         assert "evidence_precision" in summary

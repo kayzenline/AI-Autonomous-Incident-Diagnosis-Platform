@@ -63,6 +63,7 @@ def summarize(repeats: list[dict[str, Any]]) -> dict[str, Any]:
     summary["holdout_count"] = first["holdout_count"]
     summary["observation_count"] = len(cases)
     summary["repeats"] = len(repeats)
+    summary["status_counts"] = dict(Counter(case["status"] for case in cases))
     summary["first_output_illegal_citation_rate"] = sum(
         case["first_output_illegal_citation_rate"] for case in cases
     ) / len(cases)
