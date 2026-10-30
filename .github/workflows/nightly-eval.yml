@@ -4,6 +4,11 @@ on:
   schedule:
     - cron: "17 16 * * *"
   workflow_dispatch:
+    inputs:
+      scenarios:
+        description: "Optional comma-separated frozen IDs for a diagnostic smoke run"
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -23,6 +28,7 @@ jobs:
       DEEPSEEK_THINKING: ${{ vars.EVAL_DEEPSEEK_THINKING }}
       OPENAI_MODEL: ${{ vars.EVAL_MODEL }}
       EVAL_REPEATS: ${{ vars.EVAL_REPEATS }}
+      EVAL_SCENARIOS: ${{ inputs.scenarios }}
       EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL }}
     steps:
       - uses: actions/checkout@v4
@@ -53,7 +59,7 @@ jobs:
         run: |
           python -m app.eval.nightly --provider openai \
             --repeats "$EVAL_REPEATS" --judge-model "$EVAL_JUDGE_MODEL" \
-            --output eval-results
+            --output eval-results --scenarios "$EVAL_SCENARIOS"
       - name: Retain measurements even on failure
         if: always()
         uses: actions/upload-artifact@v4

@@ -155,6 +155,7 @@ async def run_nightly(
         },
         "manifest": manifest,
         "scenario_ids": sorted(s.id for s in selected),
+        "scope": "full-frozen" if scenarios is None else "selected-frozen",
         "runs": {"m3": [], "m4": []},
     }
 
@@ -204,12 +205,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--provider", choices=("fake", "openai"), required=True)
     parser.add_argument("--repeats", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--scenarios", default="", help="Comma-separated frozen IDs for smoke tests"
+    )
     parser.add_argument("--judge-model", help="Optional live judge; commentary only")
     args = parser.parse_args(argv)
     if args.repeats < 2:
         parser.error("--repeats must be at least 2")
     if args.provider == "openai" and not os.getenv("OPENAI_MODEL"):
         parser.error("Set OPENAI_MODEL explicitly for measured runs")
+    selected = None
+    if args.scenarios:
+        ids = {item.strip() for item in args.scenarios.split(",") if item.strip()}
+        available = {s.id: s for s in load_frozen_scenarios()}
+        if not ids or ids - available.keys():
+            parser.error("Unknown or empty scenario selection")
+        selected = [available[key] for key in sorted(ids)]
     configure_telemetry()
     try:
         asyncio.run(
@@ -217,6 +228,7 @@ def main(argv: list[str] | None = None) -> int:
                 repeats=args.repeats,
                 provider=args.provider,
                 output=args.output,
+                scenarios=selected,
                 judge=OpenAIAdapter(model=args.judge_model) if args.judge_model else None,
             )
         )
