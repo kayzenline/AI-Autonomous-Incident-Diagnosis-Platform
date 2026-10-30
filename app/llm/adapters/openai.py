@@ -76,6 +76,6 @@ class OpenAIAdapter:
         key = self._api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
             raise RuntimeError("OPENAI_API_KEY is not set in the environment.")
-        base_url = self._base_url or os.environ.get("OPENAI_BASE_URL") or None
+        base_url = self._base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
         self._client = OpenAI(api_key=key, base_url=base_url)
         return self._client

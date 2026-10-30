@@ -39,7 +39,7 @@ def test_deepseek_settings_reach_compatible_client(monkeypatch) -> None:
 
 @pytest.mark.parametrize(
     ("base_url", "expected"),
-    [("https://api.deepseek.com", "https://api.deepseek.com"), ("", None)],
+    [("https://api.deepseek.com", "https://api.deepseek.com"), ("", "https://api.openai.com/v1")],
 )
 def test_compatible_endpoint_and_key_are_used(monkeypatch, base_url, expected) -> None:
     from app.llm.adapters import openai as module
@@ -62,3 +62,14 @@ def test_invalid_thinking_setting_fails_before_request(monkeypatch) -> None:
     monkeypatch.setenv("DEEPSEEK_THINKING", "typo")
     with pytest.raises(ValueError, match="enabled or disabled"):
         OpenAIAdapter()
+
+
+def test_empty_endpoint_uses_real_sdk_default(monkeypatch) -> None:
+    monkeypatch.setenv("OPENAI_BASE_URL", "")
+    monkeypatch.setenv("OPENAI_API_KEY", "test-placeholder")
+    monkeypatch.delenv("DEEPSEEK_THINKING", raising=False)
+    client = OpenAIAdapter()._get_client()
+    try:
+        assert str(client.base_url) == "https://api.openai.com/v1/"
+    finally:
+        client.close()
