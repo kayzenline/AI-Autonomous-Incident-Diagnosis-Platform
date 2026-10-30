@@ -1,0 +1,958 @@
+{
+  "status": "completed",
+  "started_at": "2026-10-30T01:47:30.114858+00:00",
+  "revision": "1dde468541c896772f336edcff58b423ab9131eb",
+  "provider": "openai",
+  "measurement": "live-model",
+  "requested_repeats": 3,
+  "model_settings": {
+    "api_host": "api.deepseek.com",
+    "temperature": 0.0,
+    "deepseek_thinking": "disabled"
+  },
+  "manifest": {
+    "set": "frozen-v1",
+    "scenarios": [
+      {
+        "id": "bad-deploy-api",
+        "sha256": "96b609671c3ee61713dc63586937c2bc731c17142455f6025af69f32bd076990",
+        "holdout": true
+      },
+      {
+        "id": "config-error-flags",
+        "sha256": "25fcd584b861f3a1a8299321c5337828c932d3c13074d785f9965e5566e42586",
+        "holdout": false
+      },
+      {
+        "id": "config-with-memory-herring",
+        "sha256": "29d56b77c35936120c4021cbb00282a08c8a9b3666b9e6ec24f4043206678f37",
+        "holdout": false
+      },
+      {
+        "id": "conflict-deploy-vs-config",
+        "sha256": "c7e46c720cb0ed0b4fd19a735915cdd116ef5ecf4856137fe2df19240c03b33d",
+        "holdout": true
+      },
+      {
+        "id": "cpu-saturation-checkout",
+        "sha256": "663f396277983d15a69c2dea79b07f1c3528dec599d2c8fea5e27828cb5c88b4",
+        "holdout": false
+      },
+      {
+        "id": "cpu-with-disk-herring",
+        "sha256": "055a03df77221f0defade1cb17788356cb6be8979a1f9deafcdd7610b31495fa",
+        "holdout": true
+      },
+      {
+        "id": "db-pool-payments",
+        "sha256": "c445f0f7f39ae0549f95fe28c9a2a0fa2e2d982917fe504e0c02b182a6dea9fc",
+        "holdout": false
+      },
+      {
+        "id": "db-pool-with-cpu-herring",
+        "sha256": "afad2e13809777ee2c593ac1c84f91e4d5a914e1fc33df5c511763e5e8424041",
+        "holdout": false
+      },
+      {
+        "id": "dependency-timeout-inventory",
+        "sha256": "17c1311ae3b16bbed0d8f9f1aae97ebc2fcd8b81e4f10b051d1638434c550f96",
+        "holdout": false
+      },
+      {
+        "id": "dependency-with-cpu-herring",
+        "sha256": "fe2d150a43da1770419f0b6f7593029f3a457145dd518d77ea4571ba9d658112",
+        "holdout": true
+      },
+      {
+        "id": "disk-full-logger",
+        "sha256": "9249546c2c576f923aed4108772526e105c4199f538f26c1594587cfcb7e31f0",
+        "holdout": false
+      },
+      {
+        "id": "dns-injection",
+        "sha256": "989ce7e21fe96f17958ae657edd6590d417130a1e74e6ca12e305595d98fa626",
+        "holdout": true
+      },
+      {
+        "id": "dns-nxdomain-edge",
+        "sha256": "d68e096ffaf9f4cf61bc3e03a12e82ae7d7bd0db2d0031fe3dd3772e47408e5a",
+        "holdout": false
+      },
+      {
+        "id": "drilldown-payments-pool",
+        "sha256": "3d2c7800302d680a402e776fef461386a57d7fd249bcb8b90dcbaaafa6d9afee",
+        "holdout": false
+      },
+      {
+        "id": "drilldown-truncated-dns",
+        "sha256": "feceaabf6b75b093efc229bb00592f34cdc2109fd40bfb339c2c6a0010ff8135",
+        "holdout": true
+      },
+      {
+        "id": "memory-injection",
+        "sha256": "4f6c2c483fe7c36187e22ed17d70011227a1a8920ca044d597fa3be2822c2497",
+        "holdout": false
+      },
+      {
+        "id": "memory-leak-worker",
+        "sha256": "260a72ba438b01992bb643c1a22c91df58dd52ef0291266902e8e1340155ff0d",
+        "holdout": false
+      },
+      {
+        "id": "misleading-disk-alert",
+        "sha256": "eaf8ca548ce2b961540446964deebff1178de6bf7f16f5402bbce6d035ef2b93",
+        "holdout": true
+      },
+      {
+        "id": "multihop-checkout-payments-pool",
+        "sha256": "2087cc2b5de80b2dc1b61f634e03801f423ac1b7427c08973f9f40b20124775c",
+        "holdout": false
+      },
+      {
+        "id": "multihop-checkout-pricing-dns",
+        "sha256": "95cb17ce5c87017685872ae5ef0cd1679b9fb0c019110c80d5fd2614ae435a98",
+        "holdout": true
+      },
+      {
+        "id": "noisy-pool-warmup",
+        "sha256": "5cc770f5b2089592630f68745076c3ce0fe64d2ac2d4da50119c40faa13ed236",
+        "holdout": false
+      },
+      {
+        "id": "normal-fluctuation",
+        "sha256": "a1f2bd2ad5691f2242fefee9de62055faa8c3dbf9e47c1db368a9c882db3d3bb",
+        "holdout": false
+      },
+      {
+        "id": "pool-injection",
+        "sha256": "9c26fa98ba2e6d043a84df40832852d134ac35e6b2adf320c7f7b5d4d0ae6038",
+        "holdout": false
+      },
+      {
+        "id": "traffic-spike-web",
+        "sha256": "f3d70071701a24e0902d75eb2b19ecf52f3edce43fdf6a0f3c487cdb76c4a022",
+        "holdout": false
+      },
+      {
+        "id": "unknown-latency-only",
+        "sha256": "b1cac3e059bc6e7199269e051119d620215585fecaab22771a675503106324dd",
+        "holdout": false
+      },
+      {
+        "id": "unknown-metrics-down",
+        "sha256": "1b074433878c4317a4aedf05e15961300ad30ea2adfd7f5ab76bd0ef77d51168",
+        "holdout": false
+      },
+      {
+        "id": "unknown-mild",
+        "sha256": "c4ccd6ed0d24dc66a53e09effb3153cecab91363098228a9de83addd4fcad5d0",
+        "holdout": true
+      },
+      {
+        "id": "unknown-partial-dependency",
+        "sha256": "fad110ddd57890a6fe84adbb8fb9b53546fac7ddc5452354e623059b3cadead1",
+        "holdout": false
+      },
+      {
+        "id": "vague-log-healthy",
+        "sha256": "54212c9f5dc648a8080259df70466bcd4f7e9ddd66d6f352a01fbcb61236d9ba",
+        "holdout": false
+      }
+    ]
+  },
+  "scenario_ids": [
+    "cpu-saturation-checkout",
+    "unknown-latency-only"
+  ],
+  "scope": "selected-frozen",
+  "runs": {
+    "m3": [
+      {
+        "agent": "single-shot-llm",
+        "agent_version": "m3",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 2,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": 1.0
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97% during the incident window, consistent with CPU saturation causing payment request timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          },
+          {
+            "scenario_id": "unknown-latency-only",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "UNKNOWN",
+            "expected_cause": null,
+            "predicted_verdict": "UNKNOWN",
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": true,
+            "top1_hit": null,
+            "top3_hit": null,
+            "severity_hit": null,
+            "evidence_recall": null,
+            "evidence_precision": null,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [],
+              "verdict": "UNKNOWN",
+              "severity": null,
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          }
+        ],
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 1
+      },
+      {
+        "agent": "single-shot-llm",
+        "agent_version": "m3",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 2,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": 1.0
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU peaked at 97%, consistent with CPU saturation causing payment timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          },
+          {
+            "scenario_id": "unknown-latency-only",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "UNKNOWN",
+            "expected_cause": null,
+            "predicted_verdict": "UNKNOWN",
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": true,
+            "top1_hit": null,
+            "top3_hit": null,
+            "severity_hit": null,
+            "evidence_recall": null,
+            "evidence_precision": null,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [],
+              "verdict": "UNKNOWN",
+              "severity": null,
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          }
+        ],
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 2
+      },
+      {
+        "agent": "single-shot-llm",
+        "agent_version": "m3",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 2,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": 1.0
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU peaked at 97%, consistent with CPU saturation causing payment timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          },
+          {
+            "scenario_id": "unknown-latency-only",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "UNKNOWN",
+            "expected_cause": null,
+            "predicted_verdict": "UNKNOWN",
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": true,
+            "top1_hit": null,
+            "top3_hit": null,
+            "severity_hit": null,
+            "evidence_recall": null,
+            "evidence_precision": null,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [],
+              "verdict": "UNKNOWN",
+              "severity": null,
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          }
+        ],
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 3
+      }
+    ],
+    "m4": [
+      {
+        "agent": "investigation-loop",
+        "agent_version": "m4",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 2,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": 1.0
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "tool_calls": 8,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97% at 03:05, coinciding with p99 latency of 180s and 20% error rate, causing payment timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [
+                {
+                  "action": "Scale out checkout replicas / increase CPU limits to relieve saturation, then verify p99 latency and error rate recover.",
+                  "risk": "med",
+                  "requires_approval": true
+                },
+                {
+                  "action": "Profile checkout request handling to identify CPU-heavy code paths (e.g., payment serialization) for optimization.",
+                  "risk": "low",
+                  "requires_approval": false
+                }
+              ],
+              "unresolved_questions": [
+                "No error logs or dependency/DB observations were available; confirm whether CPU saturation is intrinsic or driven by an external dependency.",
+                "Only a single metric point at 03:05 exists; confirm the full duration and onset of the CPU spike."
+              ]
+            }
+          },
+          {
+            "scenario_id": "unknown-latency-only",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "UNKNOWN",
+            "expected_cause": null,
+            "predicted_verdict": "UNKNOWN",
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": true,
+            "top1_hit": null,
+            "top3_hit": null,
+            "severity_hit": null,
+            "evidence_recall": null,
+            "evidence_precision": null,
+            "tool_calls": 7,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [],
+              "verdict": "UNKNOWN",
+              "severity": null,
+              "recommendations": [
+                {
+                  "action": "Collect higher-resolution latency and resource metrics around 03:05 and enable dependency tracing to identify the latency source",
+                  "risk": "low",
+                  "requires_approval": false
+                }
+              ],
+              "unresolved_questions": [
+                "What caused the p99 latency spike to 1500ms at 03:05 when CPU, DB, dependencies, changes, and logs show no anomaly?",
+                "Is the single latency data point a real incident or a measurement artifact?"
+              ]
+            }
+          }
+        ],
+        "avg_tool_calls": 7.5,
+        "max_tool_calls_used": 8,
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 1
+      },
+      {
+        "agent": "investigation-loop",
+        "agent_version": "m4",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 2,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": 1.0
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "tool_calls": 7,
+            "model_rounds": 8,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97% at 03:05, coinciding with p99 latency of 180s, causing shopper payment timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [
+                {
+                  "action": "Scale out checkout replicas / increase CPU limits to relieve saturation",
+                  "risk": "low",
+                  "requires_approval": true
+                },
+                {
+                  "action": "Profile checkout for CPU-heavy code paths during payment flow",
+                  "risk": "low",
+                  "requires_approval": false
+                }
+              ],
+              "unresolved_questions": [
+                "No error logs or dependency/DB data available to fully confirm root cause",
+                "Whether CPU saturation is primary or a symptom of another issue (e.g., retry storm)"
+              ]
+            }
+          },
+          {
+            "scenario_id": "unknown-latency-only",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "UNKNOWN",
+            "expected_cause": null,
+            "predicted_verdict": "UNKNOWN",
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": true,
+            "top1_hit": null,
+            "top3_hit": null,
+            "severity_hit": null,
+            "evidence_recall": null,
+            "evidence_precision": null,
+            "tool_calls": 7,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": true,
+            "first_output_illegal_citation_rate": 0.6667,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [],
+              "verdict": "UNKNOWN",
+              "severity": null,
+              "recommendations": [
+                {
+                  "action": "Enable/collect more detailed telemetry (dependency traces, DB connection metrics, per-endpoint latency) for checkout to localize the latency source.",
+                  "risk": "low",
+                  "requires_approval": false
+                }
+              ],
+              "unresolved_questions": [
+                "What downstream calls does checkout make and were any slow at 03:05?",
+                "Is there DB connection pool data available for checkout?",
+                "Why did latency spike without corresponding CPU, error, or change signals?"
+              ]
+            }
+          }
+        ],
+        "avg_tool_calls": 7.0,
+        "max_tool_calls_used": 7,
+        "first_output_illegal_citation_rate": 0.3333,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 2
+      },
+      {
+        "agent": "investigation-loop",
+        "agent_version": "m4",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 2,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": 1.0
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "tool_calls": 8,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97% at 03:05, coinciding with p99 latency of 180ms and 20% error rate, causing payment timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [
+                {
+                  "action": "Scale out checkout replicas or increase CPU limits to relieve saturation",
+                  "risk": "med",
+                  "requires_approval": true
+                },
+                {
+                  "action": "Profile checkout for CPU-intensive hot paths during payment processing",
+                  "risk": "low",
+                  "requires_approval": false
+                }
+              ],
+              "unresolved_questions": [
+                "No error logs or dependency/DB observations were available to confirm the exact timeout mechanism",
+                "Whether CPU saturation is root cause or a symptom of increased load (request rate ratio was 1.0)"
+              ]
+            }
+          },
+          {
+            "scenario_id": "unknown-latency-only",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "UNKNOWN",
+            "expected_cause": null,
+            "predicted_verdict": "UNKNOWN",
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": true,
+            "top1_hit": null,
+            "top3_hit": null,
+            "severity_hit": null,
+            "evidence_recall": null,
+            "evidence_precision": null,
+            "tool_calls": 7,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [],
+              "verdict": "UNKNOWN",
+              "severity": null,
+              "recommendations": [
+                {
+                  "action": "Enable/collect dependency and database connection telemetry for checkout to distinguish downstream vs DB causes.",
+                  "risk": "low",
+                  "requires_approval": false
+                },
+                {
+                  "action": "Inspect checkout request traces around 03:05 to identify the slow span.",
+                  "risk": "low",
+                  "requires_approval": false
+                }
+              ],
+              "unresolved_questions": [
+                "Which downstream call or span accounts for the 1500ms p99 latency?",
+                "Is there DB connection pool pressure not captured by current telemetry?",
+                "Why are there no error logs despite the latency spike?"
+              ]
+            }
+          }
+        ],
+        "avg_tool_calls": 7.5,
+        "max_tool_calls_used": 8,
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 3
+      }
+    ]
+  },
+  "summary": {
+    "m3": {
+      "agent": "single-shot-llm",
+      "agent_version": "m3",
+      "model": "deepseek-flash",
+      "scenario_set": "frozen-v1",
+      "scenario_count": 2,
+      "holdout_count": 0,
+      "top1": 1.0,
+      "top3": 1.0,
+      "verdict_accuracy": {
+        "FAULT": 1.0,
+        "NOT_A_FAULT": null,
+        "UNKNOWN": 1.0
+      },
+      "evidence_recall": 1.0,
+      "evidence_precision": 1.0,
+      "severity_accuracy": 1.0,
+      "observation_count": 6,
+      "repeats": 3,
+      "first_output_illegal_citation_rate": 0.0,
+      "accepted_illegal_citation_rate": 0.0,
+      "agreement@k": 1.0,
+      "agreement_by_scenario": {
+        "cpu-saturation-checkout": 1.0,
+        "unknown-latency-only": 1.0
+      },
+      "agreement_definition": "modal valid (verdict, top category, top cause) count / k; missing reports count only in denominator; non-FAULT uses verdict only; not pass@k"
+    },
+    "m4": {
+      "agent": "investigation-loop",
+      "agent_version": "m4",
+      "model": "deepseek-flash",
+      "scenario_set": "frozen-v1",
+      "scenario_count": 2,
+      "holdout_count": 0,
+      "top1": 1.0,
+      "top3": 1.0,
+      "verdict_accuracy": {
+        "FAULT": 1.0,
+        "NOT_A_FAULT": null,
+        "UNKNOWN": 1.0
+      },
+      "evidence_recall": 1.0,
+      "evidence_precision": 1.0,
+      "severity_accuracy": 1.0,
+      "observation_count": 6,
+      "repeats": 3,
+      "first_output_illegal_citation_rate": 0.11111666666666666,
+      "accepted_illegal_citation_rate": 0.0,
+      "agreement@k": 1.0,
+      "agreement_by_scenario": {
+        "cpu-saturation-checkout": 1.0,
+        "unknown-latency-only": 1.0
+      },
+      "agreement_definition": "modal valid (verdict, top category, top cause) count / k; missing reports count only in denominator; non-FAULT uses verdict only; not pass@k"
+    }
+  },
+  "comparison": {
+    "left": "m3",
+    "right": "m4",
+    "left_top1": 1.0,
+    "right_top1": 1.0,
+    "top1_delta": 0.0,
+    "left_top3": 1.0,
+    "right_top3": 1.0,
+    "top3_delta": 0.0,
+    "evidence_recall_delta": 0.0,
+    "evidence_precision_delta": 0.0,
+    "changed_cases": []
+  },
+  "headline": {
+    "metric": "M4 Top-1 minus M3 Top-1",
+    "value": 0.0
+  },
+  "judge": {
+    "status": "completed",
+    "model": "deepseek-flash",
+    "cases": [
+      {
+        "version": "m3",
+        "scenario_id": "cpu-saturation-checkout",
+        "text": "The diagnosis is internally consistent but thin. CPU saturation at 97% is cited as the cause of payment timeouts, and the single supporting metric (cpu_high) matches the stated cause; no contradicting evidence is listed, so the 0.7 confidence and \"FAULT\"/high severity are not contradicted by anything in the record.\n\nWeaknesses:\n- Only one evidence item supports the hypothesis. A 97% CPU reading alone doesn't establish causation of payment timeouts \u2014 no latency/error-rate/timeout metrics are cited to link CPU to the symptom.\n- No alternative causes are considered (e.g., downstream dependency, memory, I/O, traffic spike), so the single-hypothesis structure can't be assessed for whether it was properly ruled out.\n- `recommendations` is empty despite a high-severity FAULT verdict \u2014 the output doesn't follow through on its own conclusion with any remediation or next step.\n- `unresolved_questions` is empty, which is implausible given the causal gap above; at minimum, \"is CPU saturation the actual bottleneck vs. a symptom of load?\" should be flagged.\n\nOverall: coherent and not self-contradictory, but under-evidenced and incomplete on the action side."
+      },
+      {
+        "version": "m3",
+        "scenario_id": "unknown-latency-only",
+        "text": "This diagnosis is empty and internally consistent only in a trivial sense: it asserts nothing, so nothing can contradict it. But it also fails to do the job of a diagnosis.\n\n- **No hypotheses:** With zero candidate explanations, the \"UNKNOWN\" verdict isn't a conclusion drawn from evidence\u2014it's a placeholder. There's no reasoning trail to assess for coherence.\n- **No severity:** Appropriate given no hypothesis, but it means the output carries no triage value.\n- **No recommendations:** Nothing follows from nothing, so this is coherent, but it leaves the reader with no next step.\n- **No unresolved questions:** This is the weakest part. A genuinely unknown situation should surface *what would resolve the unknown* (missing data, ambiguous signals, untested assumptions). An empty list implies no open questions, which contradicts the \"UNKNOWN\" verdict.\n\nOverall: coherent but vacuous. It reads like a default/fallback output rather than an analysis. To be useful it would need at least one hypothesis (even a low-confidence one), the evidence gap driving the UNKNOWN verdict, and explicit unresolved questions or a data request."
+      },
+      {
+        "version": "m4",
+        "scenario_id": "cpu-saturation-checkout",
+        "text": "The diagnosis is internally coherent: a single CPU-saturation hypothesis is stated, tied to one cited metric (`cpu_high`), and the verdict/severity (FAULT/high) are consistent with the described 97% CPU, 180s p99, and 20% errors. Confidence 0.7 is reasonable given only one supporting metric and no contradicting evidence.\n\nRecommendations follow the evidence: scale-out/limit increase addresses saturation, and profiling targets CPU-heavy paths. Both are appropriately gated (scale-out requires approval, med risk; profiling low risk). The unresolved questions correctly flag the key gaps\u2014no logs/dependency data to distinguish intrinsic vs. downstream-driven CPU load, and only a single time point so duration/onset unconfirmed.\n\nMinor caveats: the causal chain (CPU \u2192 payment timeouts \u2192 errors) is asserted rather than demonstrated, and \"payment serialization\" is speculative. But these are framed as hypotheses/questions, not overclaimed. Overall the report is consistent and its recommendations are proportionate to the cited evidence."
+      },
+      {
+        "version": "m4",
+        "scenario_id": "unknown-latency-only",
+        "text": "**Commentary**\n\nThe diagnosis is internally consistent in a narrow sense: with no hypotheses and no confirmed anomaly, \"UNKNOWN\" with null severity is a defensible non-verdict, and the single recommendation (gather higher-resolution metrics and dependency tracing) is a low-risk, non-destructive next step that directly targets the stated unresolved question. It does not overreach into remediation.\n\nWeaknesses:\n\n- **Empty hypotheses list.** The unresolved questions themselves imply at least one candidate explanation (measurement artifact vs. real transient latency). Leaving `hypotheses` empty discards that structure and makes the verdict look like an absence of analysis rather than a deliberate \"insufficient evidence\" call. A single \"artifact vs. real spike\" hypothesis with low confidence would be more coherent.\n- **Recommendation-evidence fit is adequate but thin.** The cited evidence (no CPU/DB/dependency/change/log anomaly) supports \"collect more data\" rather than \"no incident,\" yet the verdict doesn't distinguish \"ruled out\" from \"not yet observed.\" The recommendation implicitly assumes the spike is real enough to trace; that's fine, but the diagnosis should say so.\n- **No time bound or success criterion** on the recommendation, so it's unclear when the UNKNOWN would resolve.\n- **Severity null is appropriate** given no confirmed impact, but worth noting it's a placeholder, not a finding.\n\nOverall: coherent and appropriately cautious, but under-structured \u2014 the unresolved questions contain more diagnostic content than the hypotheses field, and the recommendation lacks a resolution criterion."
+      }
+    ]
+  },
+  "finished_at": "2026-10-30T01:49:14.946604+00:00"
+}

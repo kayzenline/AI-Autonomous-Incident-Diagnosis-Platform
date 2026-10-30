@@ -23,3 +23,12 @@ Do not replace earlier failures with corrected runs.
 - Source inspection showed M4 omitted both the report schema and tool catalog from model messages. Fake-model tests masked this missing public contract.
 - The repair supplies existing contract schemas and generic tool descriptions, without per-scenario hints or ground truth, and requests JSON mode.
 - Preserve deterministic baseline files and scenario hashes. Re-run measurements under the repaired revision before starting M6.
+
+
+## Repaired contract smoke (2026-10-30)
+
+- [Actions run](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/40987880238)
+- Source revision: 1dde468; selected non-holdout scenarios cpu-saturation-checkout and unknown-latency-only, k=3.
+- All 12 diagnoses (6 M3 and 6 M4) completed and matched the expected verdict/cause where applicable; no illegal accepted citations. Judge completed.
+- M4 used 7–8 tool calls per diagnosis. These two cases confirm the contract integration works, not full-set accuracy or a gain over M3.
+- Full frozen-set remeasurement is required before claiming improvement or starting memory ablations.
