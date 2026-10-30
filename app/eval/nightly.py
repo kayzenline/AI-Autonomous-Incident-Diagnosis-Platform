@@ -12,6 +12,7 @@ from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from app.core.telemetry import configure_telemetry, flush_telemetry, traced
 from app.eval.runner import (
@@ -62,6 +63,7 @@ def summarize(repeats: list[dict[str, Any]]) -> dict[str, Any]:
     summary["holdout_count"] = first["holdout_count"]
     summary["observation_count"] = len(cases)
     summary["repeats"] = len(repeats)
+    summary["status_counts"] = dict(Counter(case["status"] for case in cases))
     summary["first_output_illegal_citation_rate"] = sum(
         case["first_output_illegal_citation_rate"] for case in cases
     ) / len(cases)
@@ -143,8 +145,18 @@ async def run_nightly(
         "provider": provider,
         "measurement": "live-model" if provider == "openai" else "offline-harness",
         "requested_repeats": repeats,
+        "model_settings": {
+            "api_host": (
+                urlsplit(os.getenv("OPENAI_BASE_URL") or "https://api.openai.com/v1").hostname
+                if provider == "openai"
+                else None
+            ),
+            "temperature": 0.0,
+            "deepseek_thinking": os.getenv("DEEPSEEK_THINKING") or None,
+        },
         "manifest": manifest,
         "scenario_ids": sorted(s.id for s in selected),
+        "scope": "full-frozen" if scenarios is None else "selected-frozen",
         "runs": {"m3": [], "m4": []},
     }
 
@@ -194,12 +206,22 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--provider", choices=("fake", "openai"), required=True)
     parser.add_argument("--repeats", type=int, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--scenarios", default="", help="Comma-separated frozen IDs for smoke tests"
+    )
     parser.add_argument("--judge-model", help="Optional live judge; commentary only")
     args = parser.parse_args(argv)
     if args.repeats < 2:
         parser.error("--repeats must be at least 2")
     if args.provider == "openai" and not os.getenv("OPENAI_MODEL"):
         parser.error("Set OPENAI_MODEL explicitly for measured runs")
+    selected = None
+    if args.scenarios:
+        ids = {item.strip() for item in args.scenarios.split(",") if item.strip()}
+        available = {s.id: s for s in load_frozen_scenarios()}
+        if not ids or ids - available.keys():
+            parser.error("Unknown or empty scenario selection")
+        selected = [available[key] for key in sorted(ids)]
     configure_telemetry()
     try:
         asyncio.run(
@@ -207,6 +229,7 @@ def main(argv: list[str] | None = None) -> int:
                 repeats=args.repeats,
                 provider=args.provider,
                 output=args.output,
+                scenarios=selected,
                 judge=OpenAIAdapter(model=args.judge_model) if args.judge_model else None,
             )
         )

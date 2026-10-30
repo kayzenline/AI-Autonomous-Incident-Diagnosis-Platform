@@ -326,3 +326,114 @@ def test_m4_beats_m3_on_frozen_evaluation_set() -> None:
     assert m4["top1"] == 1.0
     assert m4["top3"] == 1.0
     assert m4["accepted_illegal_citation_rate"] == 0.0
+
+
+def test_real_model_receives_tool_catalog_and_report_contract() -> None:
+    import json
+
+    from app.core.taxonomy import CAUSE_CATEGORY
+    from app.llm.port import LLMResponse
+
+    scenario = _scenario_by_id("cpu-saturation-checkout")
+
+    class ContractDrivenModel:
+        model = "contract-test"
+        rounds = 0
+
+        async def generate(self, request):
+            self.rounds += 1
+            task = json.loads(request.messages[1].content)
+            assert request.response_schema is not None
+            assert "checkout" in task["known_services"]
+            assert "ground_truth" not in task
+            catalog = {tool["name"]: tool for tool in task["tool_catalog"]}
+            assert len(catalog) == 6
+            assert "metric" in catalog["query_metrics"]["arguments_schema"]["required"]
+            assert task["cause_category_pairs"] == {
+                cause.value: category.value for cause, category in CAUSE_CATEGORY.items()
+            }
+            schema = task["report_schema"]
+            assert schema["additionalProperties"] is False
+            assert "verdict" in schema["required"]
+            if self.rounds == 1:
+                return LLMResponse(
+                    model=self.model,
+                    content=json.dumps(
+                        {
+                            "action": "call_tool",
+                            "tool": catalog["query_metrics"]["name"],
+                            "arguments": {
+                                "service": task["incident"]["service"],
+                                "metric": "cpu",
+                                "time_range": task["default_window"],
+                            },
+                        }
+                    ),
+                )
+            observation = json.loads(request.messages[-1].content)
+            keys = observation["ledger_keys"]
+            assert keys
+            return LLMResponse(
+                model=self.model,
+                content=json.dumps(
+                    {
+                        "action": "final_report",
+                        "report": {
+                            "verdict": "FAULT",
+                            "severity": "high",
+                            "hypotheses": [
+                                {
+                                    "cause": "cpu_saturation",
+                                    "category": "CPU",
+                                    "cause_summary": "CPU observations warrant investigation.",
+                                    "confidence": 0.8,
+                                    "supporting_evidence": keys,
+                                }
+                            ],
+                        },
+                    }
+                ),
+            )
+
+    result = asyncio.run(
+        investigate(
+            scenario.incident,
+            SimulatorTools(scenario.world),
+            ContractDrivenModel(),
+            known_services=scenario.world.services,
+        )
+    )
+    assert result.status == "COMPLETED"
+    assert result.tool_calls == 1
+    assert result.accepted_illegal_citation_rate == 0
+
+
+def test_report_retry_carries_schema_and_forbids_more_tools() -> None:
+    import json
+
+    from app.llm.port import LLMResponse
+
+    scenario = _scenario_by_id("cpu-saturation-checkout")
+
+    class SchemaRetryModel:
+        rounds = 0
+
+        async def generate(self, request):
+            self.rounds += 1
+            if self.rounds == 1:
+                return LLMResponse(model="test", content='{"action":"final_report","report":{}}')
+            task = json.loads(request.messages[-1].content)
+            assert task["task"] == "regenerate_final_report"
+            assert task["report_schema"] == request.response_schema
+            assert "No tool calls" in task["instruction"]
+            return LLMResponse(model="test", content='{"verdict":"UNKNOWN"}')
+
+    result = asyncio.run(
+        investigate(
+            scenario.incident,
+            SimulatorTools(scenario.world),
+            SchemaRetryModel(),
+        )
+    )
+    assert result.status == "COMPLETED"
+    assert result.tool_calls == 0

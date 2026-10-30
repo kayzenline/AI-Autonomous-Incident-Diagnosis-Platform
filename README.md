@@ -234,3 +234,32 @@ and thread-offloaded tools. Export is disabled unless
 `OTEL_SDK_DISABLED=true` disables setup. Spans carry timing, outcome, token/tool
 counts and error types; they do not attach incident text, prompts, tool data,
 reports, credentials or exception messages.
+
+### DeepSeek first measurement
+
+DeepSeek uses the existing OpenAI-compatible adapter. For the agreed first
+experiment, configure Actions variables:
+
+| Variable | Value |
+| --- | --- |
+| EVAL_BASE_URL | https://api.deepseek.com |
+| EVAL_MODEL | deepseek-flash |
+| EVAL_JUDGE_MODEL | deepseek-flash |
+| EVAL_REPEATS | 3 |
+| EVAL_DEEPSEEK_THINKING | disabled |
+| EVAL_NIGHTLY_ENABLED | false until the first manual report is checked |
+
+Store the **DeepSeek** key in Actions secret OPENAI_API_KEY; that name is the
+adapter's credential interface, not a requirement to use OpenAI's service.
+Manual workflow dispatch works while the scheduled job is disabled.
+
+[DeepSeek defaults to thinking mode](https://api-docs.deepseek.com/guides/thinking_mode/),
+which ignores temperature. This experiment explicitly disables it and requests
+temperature 0 for both M3 and M4. Locally set OPENAI_BASE_URL and
+DEEPSEEK_THINKING to the same values. Leave DEEPSEEK_THINKING unset for providers
+that do not support DeepSeek's thinking parameter.
+
+Reports retain the endpoint hostname, requested temperature/thinking mode, model
+alias and model identifiers returned by the API. Alias versions can change, so
+compare dated runs with the recorded settings and frozen manifest. No private
+reasoning content is saved.

@@ -38,6 +38,7 @@ def test_nightly_fake_records_repeats_and_headline(tmp_path) -> None:
         assert len(report["runs"][version]) == 2
         summary = report["summary"][version]
         assert summary["observation_count"] == 4
+        assert summary["status_counts"] == {"COMPLETED": 4}
         assert summary["agreement@k"] == 1
         assert "severity_accuracy" in summary
         assert "evidence_precision" in summary
@@ -123,3 +124,38 @@ def test_baseline_gate_excludes_only_severity_metrics(tmp_path) -> None:
     changed["cases"][0]["top1_hit"] = False
     with pytest.raises(SystemExit, match="does not match"):
         _expect(path, changed, ignore_severity=True)
+
+
+def test_failed_live_case_retains_validation_reason() -> None:
+    from app.eval.runner import build_m4_report_async
+
+    class InvalidModel:
+        model = "invalid-json-test"
+
+        async def generate(self, request):
+            return LLMResponse(model=self.model, content='{"unexpected":"field"}')
+
+    report = asyncio.run(
+        build_m4_report_async(load_frozen_scenarios()[:1], llm=InvalidModel(), include_reports=True)
+    )
+    case = report["cases"][0]
+    assert case["status"] == "FAILED"
+    assert case["final_report"] is None
+    assert "Schema validation error" in case["failure_reason"]
+
+
+def test_smoke_scenario_selection_rejects_unknown_ids_before_calls(tmp_path) -> None:
+    with pytest.raises(SystemExit):
+        nightly.main(
+            [
+                "--provider",
+                "fake",
+                "--repeats",
+                "3",
+                "--output",
+                str(tmp_path),
+                "--scenarios",
+                "does-not-exist",
+            ]
+        )
+    assert not (tmp_path / "report.json").exists()

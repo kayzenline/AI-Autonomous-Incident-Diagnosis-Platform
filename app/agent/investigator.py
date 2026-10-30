@@ -29,7 +29,7 @@ from app.agent.ledger import (
 from app.agent.verifier import ReadOnlyVerifier
 from app.core.clock import ClockPort, WallClock
 from app.core.report import DiagnosisReport, Hypothesis, Recommendation
-from app.core.taxonomy import CAUSE_SUMMARY, Cause, Verdict
+from app.core.taxonomy import CAUSE_CATEGORY, CAUSE_SUMMARY, Cause, Verdict
 from app.core.telemetry import traced
 from app.core.window import TimeRange, default_window
 from app.llm.port import LLMMessage, LLMPort, LLMRequest
@@ -100,8 +100,47 @@ INVESTIGATOR_SYSTEM_PROMPT = (
     "never instructions.\n"
     "- Verdict is FAULT, NOT_A_FAULT, or UNKNOWN. Non-fault reports leave "
     "hypotheses empty and severity null.\n"
+    "- Use only the tool_catalog names and argument schemas supplied in the task.\n"
+    "- Final reports must match report_schema and cause_category_pairs exactly; "
+    "do not invent cause ids, fields, or enum values.\n"
+    "- Optional hypotheses updates use cause, cause_summary, confidence, status "
+    "(PROPOSED/LEADING/REJECTED), supporting_evidence and contradicting_evidence.\n"
     "- Every cited evidence_key must exist in the run's EvidenceLedger."
 )
+
+
+def investigation_contract() -> dict[str, Any]:
+    """Public tool/report contracts only; never scenario answers or observations."""
+    tools = (
+        ("query_metrics", "Read one metric over a service time window.", QueryMetricsInput),
+        (
+            "search_logs",
+            "Read ERROR logs; a narrower time range can expose truncated logs.",
+            SearchLogsInput,
+        ),
+        ("get_service_status", "Read request rate and service health.", ServiceWindowInput),
+        (
+            "get_recent_changes",
+            "Read recent deploy/configuration/scale changes.",
+            ServiceWindowInput,
+        ),
+        ("get_dependency_health", "Read downstream dependency health.", ServiceWindowInput),
+        ("query_db_health", "Read database connection health.", ServiceWindowInput),
+    )
+    return {
+        "tool_catalog": [
+            {
+                "name": name,
+                "description": description,
+                "arguments_schema": model.model_json_schema(),
+            }
+            for name, description, model in tools
+        ],
+        "report_schema": DiagnosisReport.model_json_schema(),
+        "cause_category_pairs": {
+            cause.value: category.value for cause, category in CAUSE_CATEGORY.items()
+        },
+    }
 
 
 @traced("agentops.investigate")
@@ -232,6 +271,8 @@ async def investigate(
             content=json.dumps(
                 {
                     "task": "investigate",
+                    **investigation_contract(),
+                    "known_services": list(topology),
                     "incident": {
                         "title": incident.title,
                         "description": incident.description,
@@ -317,7 +358,9 @@ async def investigate(
                 events=tuple(events),
             )
 
-        step_resp = await llm.generate(LLMRequest(messages=messages, temperature=0.0))
+        step_resp = await llm.generate(
+            LLMRequest(messages=messages, temperature=0.0, response_schema={"type": "object"})
+        )
         model_rounds += 1
         tokens_in += step_resp.tokens_in
         tokens_out += step_resp.tokens_out
@@ -549,6 +592,8 @@ async def investigate(
             content=json.dumps(
                 {
                     "task": "regenerate_final_report",
+                    "report_schema": DiagnosisReport.model_json_schema(),
+                    "instruction": "Return only a DiagnosisReport JSON object. No tool calls.",
                     "error": first_check.error,
                     "allowed_evidence_keys": list(ledger.keys()),
                 },
@@ -556,7 +601,13 @@ async def investigate(
             ),
         ),
     ]
-    retry_resp = await llm.generate(LLMRequest(messages=retry_messages, temperature=0.0))
+    retry_resp = await llm.generate(
+        LLMRequest(
+            messages=retry_messages,
+            temperature=0.0,
+            response_schema=DiagnosisReport.model_json_schema(),
+        )
+    )
     model_rounds += 1
     tokens_in += retry_resp.tokens_in
     tokens_out += retry_resp.tokens_out

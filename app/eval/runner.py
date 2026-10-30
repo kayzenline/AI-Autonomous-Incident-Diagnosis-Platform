@@ -78,6 +78,7 @@ async def build_m3_report_async(
         )
         row = _m3_case(scenario, result)
         if include_reports:
+            row["failure_reason"] = result.failure_reason
             row["final_report"] = (
                 None if result.report is None else result.report.model_dump(mode="json")
             )
@@ -99,6 +100,8 @@ async def build_m3_report_async(
             if case["status"] == "COMPLETED"
         ]
     )
+    if include_reports:
+        report["response_models"] = sorted(getattr(adapter, "observed_models", ()))
     return report
 
 
@@ -129,6 +132,7 @@ async def build_m4_report_async(
         )
         row = _m4_case(scenario, result)
         if include_reports:
+            row["failure_reason"] = result.failure_reason
             row["final_report"] = (
                 None if result.report is None else result.report.model_dump(mode="json")
             )
@@ -152,6 +156,8 @@ async def build_m4_report_async(
             if case["status"] == "COMPLETED"
         ]
     )
+    if include_reports:
+        report["response_models"] = sorted(getattr(adapter, "observed_models", ()))
     return report
 
 

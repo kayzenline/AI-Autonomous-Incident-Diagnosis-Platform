@@ -1,0 +1,629 @@
+{
+  "status": "completed",
+  "started_at": "2026-10-30T01:45:25.522076+00:00",
+  "revision": "082fa60540e07b817c632e6a6c4699b25c107f9a",
+  "provider": "openai",
+  "measurement": "live-model",
+  "requested_repeats": 3,
+  "model_settings": {
+    "api_host": "api.deepseek.com",
+    "temperature": 0.0,
+    "deepseek_thinking": "disabled"
+  },
+  "manifest": {
+    "set": "frozen-v1",
+    "scenarios": [
+      {
+        "id": "bad-deploy-api",
+        "sha256": "96b609671c3ee61713dc63586937c2bc731c17142455f6025af69f32bd076990",
+        "holdout": true
+      },
+      {
+        "id": "config-error-flags",
+        "sha256": "25fcd584b861f3a1a8299321c5337828c932d3c13074d785f9965e5566e42586",
+        "holdout": false
+      },
+      {
+        "id": "config-with-memory-herring",
+        "sha256": "29d56b77c35936120c4021cbb00282a08c8a9b3666b9e6ec24f4043206678f37",
+        "holdout": false
+      },
+      {
+        "id": "conflict-deploy-vs-config",
+        "sha256": "c7e46c720cb0ed0b4fd19a735915cdd116ef5ecf4856137fe2df19240c03b33d",
+        "holdout": true
+      },
+      {
+        "id": "cpu-saturation-checkout",
+        "sha256": "663f396277983d15a69c2dea79b07f1c3528dec599d2c8fea5e27828cb5c88b4",
+        "holdout": false
+      },
+      {
+        "id": "cpu-with-disk-herring",
+        "sha256": "055a03df77221f0defade1cb17788356cb6be8979a1f9deafcdd7610b31495fa",
+        "holdout": true
+      },
+      {
+        "id": "db-pool-payments",
+        "sha256": "c445f0f7f39ae0549f95fe28c9a2a0fa2e2d982917fe504e0c02b182a6dea9fc",
+        "holdout": false
+      },
+      {
+        "id": "db-pool-with-cpu-herring",
+        "sha256": "afad2e13809777ee2c593ac1c84f91e4d5a914e1fc33df5c511763e5e8424041",
+        "holdout": false
+      },
+      {
+        "id": "dependency-timeout-inventory",
+        "sha256": "17c1311ae3b16bbed0d8f9f1aae97ebc2fcd8b81e4f10b051d1638434c550f96",
+        "holdout": false
+      },
+      {
+        "id": "dependency-with-cpu-herring",
+        "sha256": "fe2d150a43da1770419f0b6f7593029f3a457145dd518d77ea4571ba9d658112",
+        "holdout": true
+      },
+      {
+        "id": "disk-full-logger",
+        "sha256": "9249546c2c576f923aed4108772526e105c4199f538f26c1594587cfcb7e31f0",
+        "holdout": false
+      },
+      {
+        "id": "dns-injection",
+        "sha256": "989ce7e21fe96f17958ae657edd6590d417130a1e74e6ca12e305595d98fa626",
+        "holdout": true
+      },
+      {
+        "id": "dns-nxdomain-edge",
+        "sha256": "d68e096ffaf9f4cf61bc3e03a12e82ae7d7bd0db2d0031fe3dd3772e47408e5a",
+        "holdout": false
+      },
+      {
+        "id": "drilldown-payments-pool",
+        "sha256": "3d2c7800302d680a402e776fef461386a57d7fd249bcb8b90dcbaaafa6d9afee",
+        "holdout": false
+      },
+      {
+        "id": "drilldown-truncated-dns",
+        "sha256": "feceaabf6b75b093efc229bb00592f34cdc2109fd40bfb339c2c6a0010ff8135",
+        "holdout": true
+      },
+      {
+        "id": "memory-injection",
+        "sha256": "4f6c2c483fe7c36187e22ed17d70011227a1a8920ca044d597fa3be2822c2497",
+        "holdout": false
+      },
+      {
+        "id": "memory-leak-worker",
+        "sha256": "260a72ba438b01992bb643c1a22c91df58dd52ef0291266902e8e1340155ff0d",
+        "holdout": false
+      },
+      {
+        "id": "misleading-disk-alert",
+        "sha256": "eaf8ca548ce2b961540446964deebff1178de6bf7f16f5402bbce6d035ef2b93",
+        "holdout": true
+      },
+      {
+        "id": "multihop-checkout-payments-pool",
+        "sha256": "2087cc2b5de80b2dc1b61f634e03801f423ac1b7427c08973f9f40b20124775c",
+        "holdout": false
+      },
+      {
+        "id": "multihop-checkout-pricing-dns",
+        "sha256": "95cb17ce5c87017685872ae5ef0cd1679b9fb0c019110c80d5fd2614ae435a98",
+        "holdout": true
+      },
+      {
+        "id": "noisy-pool-warmup",
+        "sha256": "5cc770f5b2089592630f68745076c3ce0fe64d2ac2d4da50119c40faa13ed236",
+        "holdout": false
+      },
+      {
+        "id": "normal-fluctuation",
+        "sha256": "a1f2bd2ad5691f2242fefee9de62055faa8c3dbf9e47c1db368a9c882db3d3bb",
+        "holdout": false
+      },
+      {
+        "id": "pool-injection",
+        "sha256": "9c26fa98ba2e6d043a84df40832852d134ac35e6b2adf320c7f7b5d4d0ae6038",
+        "holdout": false
+      },
+      {
+        "id": "traffic-spike-web",
+        "sha256": "f3d70071701a24e0902d75eb2b19ecf52f3edce43fdf6a0f3c487cdb76c4a022",
+        "holdout": false
+      },
+      {
+        "id": "unknown-latency-only",
+        "sha256": "b1cac3e059bc6e7199269e051119d620215585fecaab22771a675503106324dd",
+        "holdout": false
+      },
+      {
+        "id": "unknown-metrics-down",
+        "sha256": "1b074433878c4317a4aedf05e15961300ad30ea2adfd7f5ab76bd0ef77d51168",
+        "holdout": false
+      },
+      {
+        "id": "unknown-mild",
+        "sha256": "c4ccd6ed0d24dc66a53e09effb3153cecab91363098228a9de83addd4fcad5d0",
+        "holdout": true
+      },
+      {
+        "id": "unknown-partial-dependency",
+        "sha256": "fad110ddd57890a6fe84adbb8fb9b53546fac7ddc5452354e623059b3cadead1",
+        "holdout": false
+      },
+      {
+        "id": "vague-log-healthy",
+        "sha256": "54212c9f5dc648a8080259df70466bcd4f7e9ddd66d6f352a01fbcb61236d9ba",
+        "holdout": false
+      }
+    ]
+  },
+  "scenario_ids": [
+    "cpu-saturation-checkout"
+  ],
+  "scope": "selected-frozen",
+  "runs": {
+    "m3": [
+      {
+        "agent": "single-shot-llm",
+        "agent_version": "m3",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 1,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": null
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97%, consistent with CPU saturation causing payment timeouts and elevated latency.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          }
+        ],
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 1
+      },
+      {
+        "agent": "single-shot-llm",
+        "agent_version": "m3",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 1,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": null
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97% during the incident window, consistent with CPU saturation causing payment request timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          }
+        ],
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 2
+      },
+      {
+        "agent": "single-shot-llm",
+        "agent_version": "m3",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 1,
+        "holdout_count": 0,
+        "top1": 1.0,
+        "top3": 1.0,
+        "verdict_accuracy": {
+          "FAULT": 1.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": null
+        },
+        "evidence_recall": 1.0,
+        "evidence_precision": 1.0,
+        "severity_accuracy": 1.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "COMPLETED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": "FAULT",
+            "predicted_top_cause": "cpu_saturation",
+            "predicted_severity": "high",
+            "verdict_hit": true,
+            "top1_hit": true,
+            "top3_hit": true,
+            "severity_hit": true,
+            "evidence_recall": 1.0,
+            "evidence_precision": 1.0,
+            "swept_services": [
+              "checkout"
+            ],
+            "tool_calls": 11,
+            "llm_attempts": 2,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": null,
+            "final_report": {
+              "hypotheses": [
+                {
+                  "cause": "cpu_saturation",
+                  "cause_summary": "Checkout CPU reached 97% during the incident window, consistent with CPU saturation causing payment request timeouts.",
+                  "category": "CPU",
+                  "confidence": 0.7,
+                  "supporting_evidence": [
+                    "metric:cpu_high"
+                  ],
+                  "contradicting_evidence": []
+                }
+              ],
+              "verdict": "FAULT",
+              "severity": "high",
+              "recommendations": [],
+              "unresolved_questions": []
+            }
+          }
+        ],
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": 0.0,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 3
+      }
+    ],
+    "m4": [
+      {
+        "agent": "investigation-loop",
+        "agent_version": "m4",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 1,
+        "holdout_count": 0,
+        "top1": 0.0,
+        "top3": 0.0,
+        "verdict_accuracy": {
+          "FAULT": 0.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": null
+        },
+        "evidence_recall": 0.0,
+        "evidence_precision": 0.0,
+        "severity_accuracy": 0.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "FAILED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": null,
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": false,
+            "top1_hit": false,
+            "top3_hit": false,
+            "severity_hit": false,
+            "evidence_recall": 0.0,
+            "evidence_precision": 0.0,
+            "tool_calls": 7,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": "Schema validation error: 1 validation error for DiagnosisReport\nevidence\n  Extra inputs are not permitted [type=extra_forbidden, input_value=[], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.14/v/extra_forbidden",
+            "final_report": null
+          }
+        ],
+        "avg_tool_calls": 7.0,
+        "max_tool_calls_used": 7,
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": null,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 1
+      },
+      {
+        "agent": "investigation-loop",
+        "agent_version": "m4",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 1,
+        "holdout_count": 0,
+        "top1": 0.0,
+        "top3": 0.0,
+        "verdict_accuracy": {
+          "FAULT": 0.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": null
+        },
+        "evidence_recall": 0.0,
+        "evidence_precision": 0.0,
+        "severity_accuracy": 0.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "FAILED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": null,
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": false,
+            "top1_hit": false,
+            "top3_hit": false,
+            "severity_hit": false,
+            "evidence_recall": 0.0,
+            "evidence_precision": 0.0,
+            "tool_calls": 7,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": "Schema validation error: 1 validation error for DiagnosisReport\nevidence_keys\n  Extra inputs are not permitted [type=extra_forbidden, input_value=[], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.14/v/extra_forbidden",
+            "final_report": null
+          }
+        ],
+        "avg_tool_calls": 7.0,
+        "max_tool_calls_used": 7,
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": null,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 2
+      },
+      {
+        "agent": "investigation-loop",
+        "agent_version": "m4",
+        "model": "deepseek-flash",
+        "scenario_set": "frozen-v1",
+        "scenario_count": 1,
+        "holdout_count": 0,
+        "top1": 0.0,
+        "top3": 0.0,
+        "verdict_accuracy": {
+          "FAULT": 0.0,
+          "NOT_A_FAULT": null,
+          "UNKNOWN": null
+        },
+        "evidence_recall": 0.0,
+        "evidence_precision": 0.0,
+        "severity_accuracy": 0.0,
+        "cases": [
+          {
+            "scenario_id": "cpu-saturation-checkout",
+            "holdout": false,
+            "status": "FAILED",
+            "expected_verdict": "FAULT",
+            "expected_cause": "cpu_saturation",
+            "predicted_verdict": null,
+            "predicted_top_cause": null,
+            "predicted_severity": null,
+            "verdict_hit": false,
+            "top1_hit": false,
+            "top3_hit": false,
+            "severity_hit": false,
+            "evidence_recall": 0.0,
+            "evidence_precision": 0.0,
+            "tool_calls": 7,
+            "model_rounds": 9,
+            "verifier_runs": 1,
+            "verifier_tool_calls": 0,
+            "first_output_illegal_citation": false,
+            "first_output_illegal_citation_rate": 0.0,
+            "accepted_illegal_citation_rate": 0.0,
+            "failure_reason": "Schema validation error: 1 validation error for DiagnosisReport\nevidence\n  Extra inputs are not permitted [type=extra_forbidden, input_value=[], input_type=list]\n    For further information visit https://errors.pydantic.dev/2.14/v/extra_forbidden",
+            "final_report": null
+          }
+        ],
+        "avg_tool_calls": 7.0,
+        "max_tool_calls_used": 7,
+        "first_output_illegal_citation_rate": 0.0,
+        "accepted_illegal_citation_rate": null,
+        "response_models": [
+          "deepseek-flash"
+        ],
+        "repeat": 3
+      }
+    ]
+  },
+  "summary": {
+    "m3": {
+      "agent": "single-shot-llm",
+      "agent_version": "m3",
+      "model": "deepseek-flash",
+      "scenario_set": "frozen-v1",
+      "scenario_count": 1,
+      "holdout_count": 0,
+      "top1": 1.0,
+      "top3": 1.0,
+      "verdict_accuracy": {
+        "FAULT": 1.0,
+        "NOT_A_FAULT": null,
+        "UNKNOWN": null
+      },
+      "evidence_recall": 1.0,
+      "evidence_precision": 1.0,
+      "severity_accuracy": 1.0,
+      "observation_count": 3,
+      "repeats": 3,
+      "first_output_illegal_citation_rate": 0.0,
+      "accepted_illegal_citation_rate": 0.0,
+      "agreement@k": 1.0,
+      "agreement_by_scenario": {
+        "cpu-saturation-checkout": 1.0
+      },
+      "agreement_definition": "modal valid (verdict, top category, top cause) count / k; missing reports count only in denominator; non-FAULT uses verdict only; not pass@k"
+    },
+    "m4": {
+      "agent": "investigation-loop",
+      "agent_version": "m4",
+      "model": "deepseek-flash",
+      "scenario_set": "frozen-v1",
+      "scenario_count": 1,
+      "holdout_count": 0,
+      "top1": 0.0,
+      "top3": 0.0,
+      "verdict_accuracy": {
+        "FAULT": 0.0,
+        "NOT_A_FAULT": null,
+        "UNKNOWN": null
+      },
+      "evidence_recall": 0.0,
+      "evidence_precision": 0.0,
+      "severity_accuracy": 0.0,
+      "observation_count": 3,
+      "repeats": 3,
+      "first_output_illegal_citation_rate": 0.0,
+      "accepted_illegal_citation_rate": 0.0,
+      "agreement@k": 0.0,
+      "agreement_by_scenario": {
+        "cpu-saturation-checkout": 0.0
+      },
+      "agreement_definition": "modal valid (verdict, top category, top cause) count / k; missing reports count only in denominator; non-FAULT uses verdict only; not pass@k"
+    }
+  },
+  "comparison": {
+    "left": "m3",
+    "right": "m4",
+    "left_top1": 1.0,
+    "right_top1": 0.0,
+    "top1_delta": -1.0,
+    "left_top3": 1.0,
+    "right_top3": 0.0,
+    "top3_delta": -1.0,
+    "evidence_recall_delta": -1.0,
+    "evidence_precision_delta": -1.0,
+    "changed_cases": []
+  },
+  "headline": {
+    "metric": "M4 Top-1 minus M3 Top-1",
+    "value": -1.0
+  },
+  "judge": {
+    "status": "completed",
+    "model": "deepseek-flash",
+    "cases": [
+      {
+        "version": "m3",
+        "scenario_id": "cpu-saturation-checkout",
+        "text": "The diagnosis is internally consistent as far as it goes: a single hypothesis (CPU saturation) with one supporting metric and no contradictions, verdict FAULT, severity high. But it's thin in ways that matter:\n\n- **No recommendations at all.** A high-severity FAULT verdict with zero remediation steps is a gap \u2014 even a generic \"scale out / investigate CPU consumers on checkout\" would follow from the cited evidence.\n- **Single evidence point.** `metric:cpu_high` alone supports \"CPU is high,\" but the causal claim (CPU saturation \u2192 payment timeouts and elevated latency) isn't backed by any latency/timeout metric in the evidence list. The summary asserts more than the cited evidence shows.\n- **Confidence 0.7 vs. severity high.** Reasonable, but the mismatch between moderate confidence and high severity with no unresolved questions is slightly odd \u2014 if confidence is only 0.7, you'd expect at least one open question (e.g., is CPU the cause or a symptom of retry storms?).\n- **No unresolved questions** despite the causal chain being unverified.\n\nNet: coherent but under-supported and incomplete on the action side."
+      },
+      {
+        "version": "m4",
+        "scenario_id": "cpu-saturation-checkout",
+        "text": "I can't review the diagnosis because no diagnosis was provided \u2014 the input is `null`, so there's no JSON, no cited evidence, and no recommendations to assess for coherence.\n\nIf you paste the diagnosis JSON (or the relevant fields: findings, evidence citations, and recommendations), I'll give short commentary on:\n- whether the stated diagnosis follows from the cited evidence,\n- whether each recommendation is supported by that evidence,\n- and any internal contradictions or gaps."
+      }
+    ]
+  },
+  "finished_at": "2026-10-30T01:46:18.072172+00:00"
+}

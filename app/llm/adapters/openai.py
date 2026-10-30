@@ -29,6 +29,10 @@ class OpenAIAdapter:
         sync_fn: Callable[[LLMRequest], LLMResponse] | None = None,
     ) -> None:
         self.model = model or os.environ.get("OPENAI_MODEL", DEFAULT_OPENAI_MODEL)
+        self.observed_models: set[str] = set()
+        self._thinking = os.getenv("DEEPSEEK_THINKING") or None
+        if self._thinking not in {None, "enabled", "disabled"}:
+            raise ValueError("DEEPSEEK_THINKING must be enabled or disabled.")
         self._api_key = api_key
         self._base_url = base_url
         self._client = client
@@ -47,6 +51,8 @@ class OpenAIAdapter:
             "messages": [{"role": msg.role, "content": msg.content} for msg in request.messages],
             "temperature": request.temperature,
         }
+        if self._thinking is not None:
+            kwargs["extra_body"] = {"thinking": {"type": self._thinking}}
         if request.response_schema is not None:
             kwargs["response_format"] = {"type": "json_object"}
         completion = client.chat.completions.create(**kwargs)
@@ -56,6 +62,7 @@ class OpenAIAdapter:
         tokens_in = int(getattr(usage, "prompt_tokens", 0) or 0)
         tokens_out = int(getattr(usage, "completion_tokens", 0) or 0)
         model_name = str(getattr(completion, "model", None) or self.model)
+        self.observed_models.add(model_name)
         return LLMResponse(
             content=content,
             model=model_name,
@@ -69,6 +76,8 @@ class OpenAIAdapter:
         key = self._api_key or os.environ.get("OPENAI_API_KEY")
         if not key:
             raise RuntimeError("OPENAI_API_KEY is not set in the environment.")
-        base_url = self._base_url or os.environ.get("OPENAI_BASE_URL")
+        base_url = (
+            self._base_url or os.environ.get("OPENAI_BASE_URL") or "https://api.openai.com/v1"
+        )
         self._client = OpenAI(api_key=key, base_url=base_url)
         return self._client
