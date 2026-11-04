@@ -1,0 +1,107 @@
+# Episodic memory from a prior flash-sale incident on `order-service` guides the
+# investigator past decoy dependencies (`user-profile`, `notifications`) directly
+# to `inventory-db-proxy`, where DB pool exhaustion is verified by current tools.
+id: episodic-multidep-inventory-pool
+title: "Order reservation failures with 3 downstream dependencies"
+service: order-service
+tags: [fault, episodic_clue, multi_hop, database]
+holdout: false
+incident:
+  title: Order reservation timeouts under flash sale
+  description: Order reservations are failing with 5xx responses during flash sale load.
+  service: order-service
+  occurred_at: 2026-10-28T14:00:00Z
+  detected_at: 2026-10-28T14:10:00Z
+  user_severity: high
+  metadata:
+    service_version: "v2.0"
+world:
+  services: [order-service, user-profile, notifications, inventory-db-proxy]
+  metrics_unavailable: false
+  metrics:
+    - service: order-service
+      metric: cpu
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 33}
+    - service: order-service
+      metric: memory
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 42}
+    - service: order-service
+      metric: disk
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 21}
+    - service: order-service
+      metric: latency_p99
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 890}
+    - service: order-service
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 9}
+    - service: order-service
+      metric: db_connections
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 14}
+    - service: user-profile
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 0}
+    - service: inventory-db-proxy
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 15}
+    - service: inventory-db-proxy
+      metric: db_connections
+      evidence_key: "metric:inv_proxy_db_high"
+      points:
+        - {at: 2026-10-28T14:05:00Z, value: 97}
+  logs:
+    - service: inventory-db-proxy
+      at: 2026-10-28T14:06:00Z
+      level: ERROR
+      message: "too many connections waiting on inventory reservation pool"
+      evidence_key: "log:inv_proxy_pool_timeout"
+  changes: []
+  dependencies:
+    - service: order-service
+      name: user-profile
+      status: healthy
+      latency_ms: 18
+      evidence_key: "dep:user_profile_ok"
+    - service: order-service
+      name: notifications
+      status: healthy
+      latency_ms: 20
+      evidence_key: "dep:notifications_ok"
+    - service: order-service
+      name: inventory-db-proxy
+      status: healthy
+      latency_ms: 42
+      evidence_key: "dep:inv_proxy_ok"
+  databases:
+    - service: user-profile
+      connections_pct: 12
+      waiters: 0
+    - service: inventory-db-proxy
+      connections_pct: 97
+      waiters: 29
+      evidence_key: "db:inv_proxy_pool"
+  statuses:
+    - service: order-service
+      request_rate_ratio: 1.0
+    - service: user-profile
+      request_rate_ratio: 1.0
+    - service: notifications
+      request_rate_ratio: 1.0
+    - service: inventory-db-proxy
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DATABASE
+  cause: db_pool_exhausted
+  severity: high
+  key_evidence_keys:
+    - "db:inv_proxy_pool"
+    - "metric:inv_proxy_db_high"
+    - "log:inv_proxy_pool_timeout"

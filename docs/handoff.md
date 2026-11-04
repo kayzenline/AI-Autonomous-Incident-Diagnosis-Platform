@@ -1,10 +1,10 @@
 # AgentOps 工程交接文档（Handoff & Engineering Rationale）
 
 > **更新日期**：2026-11-04
-> **当前主分支状态**：M2（PR #36/#38）与 M5 工具链及 DeepSeek 全量无记忆实测（PR #37/#40/#42, Run `40988173433`）已完成并归档。
-> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run（含真库与进程重启验收）、M5 离线门禁/夜间评测工具链/OTel/DeepSeek 实测归档。
-> **当前待推进**：M6（Issue `#41`：情景记忆与服务知识库及三组消融对比）。
-> **分数口径**：下文 M3/M4 的 `0.85`/`1.00` 来自离线确定性 fake adapter；真实 `deepseek-flash`（`k=3`, 29 场景）无记忆实测已归档于 `evals/measurements/2026-10-30-deepseek-repaired.json`（M3 Top-1 `0.8500`, M4 Top-1 `0.7333`, `headline = -0.1167`, M4 87/87 完成）。
+> **当前主分支状态**：M0–M6 已全部完成并合入 `main`。M2（PR #36/#38）、M5 工具链及 DeepSeek 全量无记忆实测（PR #37/#40/#42/#43, Run `40988173433`）、M6 经证据校验的情景记忆与服务知识库及三组消融对比（Issue `#41`）均已落地。
+> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run（含真库与进程重启验收）、M5 离线门禁/夜间评测工具链/OTel/DeepSeek 实测归档、M6 双层记忆（`MemoryItem` / `MemoryRecall` / `Feedback` / `Hypothesis` 持久化、混合向量+BM25 检索、`search_memory`、仅按引用流转的信任机、跨 Run 继承及 `m6-v1` 三组消融基准）。
+> **当前待推进**：M7（动态预算与长尾场景扩展）或 M8（生产只读适配器 Prometheus/Loki/K8s）。
+> **分数口径**：下文 M3/M4 的 `0.85`/`1.00` 及 M6 的 `0.3333 -> 0.6667 -> 1.0000` 来自离线确定性 fake adapter；真实 `deepseek-flash`（`k=3`, 29 场景）无记忆实测已归档于 `evals/measurements/2026-10-30-deepseek-repaired.json`（M3 Top-1 `0.8500`, M4 Top-1 `0.7333`, `headline = -0.1167`, M4 87/87 完成）。`m6-v1` 独立版本集分数严禁与 `frozen-v1`（29 场景）发布的 M3/M4 分数直接相减。
 
 ---
 
@@ -19,8 +19,8 @@
 | **M3：单次 LLM 对照组** | `#13, #27` / PR `#33` (`8a2d2b8`) | `app/llm/port.py`、`OpenAIAdapter`、`FakeLLMAdapter`、`app/agent/single_shot.py`、`evals/baselines/m3-single-shot.json`（离线 Top-1 `0.85`） | ✅ 已合入 `main` |
 | **M4：多步调查循环 + Cassette** | `#14, #28` / PR `#34` (`98eda68`) | `EvidenceLedger`、`HypothesisBoard`、`ReadOnlyVerifier`、`investigate()`、`InvestigativeFakeLLM`、`app/eval/cassette.py`、`evals/baselines/m4-agent.json`（离线 Top-1 `1.00`）、SRE `inspect` / `replay` CLI | ✅ 已合入 `main` |
 | **M2：持久化与异步流** | Issue `#15` / PR `#36, #38` | Postgres + Alembic、Incident/Run/RunEvent、幂等、SSE、CLI、进程重启真库验收 | ✅ 已合入 `main` |
-| **M5：Nightly 评测与首份实测** | Issue `#16, #39` / PR `#37, #40, #42` | Nightly workflow、`agreement@k`、Judge 评论、OTel、`evals/measurements/2026-10-30-deepseek-repaired.json` | ✅ 已完成归档 |
-| **M6：情景记忆与知识库消融** | Issue `#41` | `MemoryItem`、混合检索、信任状态流转、三组消融实验 | ⏳ 待开发 |
+| **M5：Nightly 评测与首份实测** | Issue `#16, #39` / PR `#37, #40, #42, #43` | Nightly workflow、`agreement@k`、Judge 评论、OTel、`evals/measurements/2026-10-30-deepseek-repaired.json` | ✅ 已合入 `main` |
+| **M6：情景记忆与知识库消融** | Issue `#41` | `app/memory/`、Alembic `0002_m6`、混合检索、信任状态流转、跨 Run 继承、`scenarios/m6/*.yaml`、`evals/baselines/m6-ablation.json` | ✅ 已合入 `main` |
 
 ---
 
@@ -159,9 +159,32 @@ PR `#37`、`#40`、`#42` 已完成工具链与契约注入，并在 GitHub Actio
 - **核心指标**：`M3 Top-1 = 0.8500`，`M4 Top-1 = 0.7333`，Headline `M4 Top-1 - M3 Top-1 = -0.1167`；M4 严重度定级准确率 `0.8333` 高于 M3 的 `0.6333`（`+0.2000`）；`agreement@3` 分别为 `0.9770`（M3）与 `0.9425`（M4）。
 - **局限性与根因分析**：无记忆 M4 在 `drilldown-truncated-dns` 与 `dependency-with-cpu-herring` 上各追回 `1/3`（M3 均为 `0/3`），但在 3 个多跳/跨服务场景（`drilldown-payments-pool`、`multihop-checkout-payments-pool`、`multihop-checkout-pricing-dns`）上 M4 为 `0/3`（M3 因代码预先全扫所有服务拿到 `3/3`）。原因在于无记忆 M4 将 7–8 次工具调用消耗在入口服务 `checkout` 的本地指标上，停留在第一跳 `dependency_timeout`，未能优先下钻 `payments` 或 `pricing`。定时 Nightly 保持关闭（`EVAL_NIGHTLY_ENABLED=false`）。
 
-### 3. M6 记忆消融
+### 3. M6 经证据校验的情景记忆、服务知识库与三组消融实验（已完成，Issue `#41`）
 
-接下来才引入 MemoryItem、反馈信任、检索和跨 Run 继承。
-先保留 M5 无记忆的真实对照，再做无记忆/情景记忆/情景+知识库消融。
-遵循 requirements.md FR-7：仅晋升实际引用的记忆，污染和陈旧记忆必须
-接受当前证据验证；评测不继承前一次 Run，也不写入 MemoryItem。
+遵循 `docs/requirements.md` FR-7、FR-9 与 §4.6，M6 在不破坏 M1/M3/M4 冻结基线与 Cassette 的前提下实现了完整双层记忆闭环：
+
+1. **数据库 Schema 与迁移（`alembic/versions/0002_m6_memory_and_feedback.py`）**：
+   - 新增 `hypotheses`、`hypothesis_evidence`、`feedback`、`memory_items`、`memory_recalls` 五张持久化表。
+   - 当 `append_event` 写入 `HYPOTHESIS_UPDATED` 事件时，在同一事务内自动同步 `HypothesisRow` 状态流转与 `HypothesisEvidenceRow` 证据关联。
+2. **写入脱敏、可配置去重与混合检索（`app/memory/`）**：
+   - **脱敏**：所有写入 `MemoryItem` 的 `summary` 与 `content` 强制经过 `app/tools/safety.py` 的 `redact_text` 过滤（移除密钥、Token、邮箱，并将内网 IP 映射为 `<ip-N>` 伪名）。
+   - **可配置去重**：基于确定性 64 维特征哈希 L2 归一化向量与词集 Jaccard 的混合文本相似度，当同一 `(layer, service, category, service_version)` 下相似度 `>= similarity_dedup_threshold`（默认 `0.85`）时合并条目并递增 `usage_count`。
+   - **混合排序（`app/memory/retrieval.py`）**：综合 `0.65 * vector_cosine + 0.35 * BM25`、`exp(-age_days / half_life_days)` 时间衰减、信任权重（`CONFIRMED = 1.0`, `CANDIDATE = 0.65`, `QUARANTINED = 0.0`）以及 `service_version` / `valid_until` 版本新鲜度权重（版本不匹配或过期标记 `stale=True`，权重降为 `0.35`）。
+3. **仅按实际引用流转的反馈信任状态机（`POST /v1/runs/{run_id}/feedback`）**：
+   - `MemoryRecallRow` 精确区分本次 Run **仅召回**（`cited=False`）与**被最终假设引用**（`cited=True`）的记忆，外加本轮新产出的 `CANDIDATE` 情景记忆。
+   - `verdict="correct"`：仅将该 Run 产出的 `CANDIDATE` 记忆及 `cited=True` 的召回记忆晋升为 `CONFIRMED`；召回但未被引用的记忆绝不连带晋升。
+   - `verdict="incorrect"`：将该 Run 产出的记忆及 `cited=True` 的召回记忆打入 `QUARANTINED`（后续默认检索直接排除）。
+   - `verdict="partial"`：仅记录 `Feedback` 审计行，不触发自动晋升或隔离。
+   - `GET /v1/memory/search` 默认 `include_candidate=false`（仅返回 `CONFIRMED` 条目），需显式传 `include_candidate=true` 才返回 `CANDIDATE` 条目。
+4. **调查循环集成与跨 Run 继承（`app/agent/investigator.py`）**：
+   - Triage 后自动按服务与告警文本执行一次初始记忆召回，并在工具集中向 Agent 暴露只读 `search_memory` 工具（计入 `<= 8` 次工具预算，但 `MemoryItem` 仅作为调查线索，**绝不能充当 `DiagnosisReport` 的 `evidence_key`**）。
+   - 若历史记忆线索（如 `bad_deploy`、`cpu_saturation` 或旧版本 `v1.0`/`v2.1` 历史故障）被当前工具返回的实时监控/日志证伪，Agent 必须在 `HypothesisBoard` 中显式将该假设置为 `REJECTED`，禁止盲信历史记忆。
+   - 生产非评测 Run 默认继承同一 Incident 此前已終止 Run 中被 `REJECTED` 的假设（避免重复踩坑），并在完成时写入 `CANDIDATE` 情景记忆；当 `is_eval=True` 时，强制关闭跨 Run 继承且绝不向记忆库写入任何 `MemoryItem`。
+5. **独立版本集 `m6-v1`（`scenarios/m6/*.yaml`）与三组消融对比（`evals/baselines/m6-ablation.json`）**：
+   - 新增 6 个 M6 专属场景（锁定于 `evals/baselines/m6-manifest.json`）：2 个污染记忆拒斥场景（`memory-contamination-bad-deploy`、`memory-contamination-cpu-herring`）、2 个服务版本升级陈旧记忆场景（`stale-service-checkout-v2-pool`、`stale-service-gateway-v3-dns`）、1 个多依赖分支情景记忆加速场景（`episodic-multidep-inventory-pool`）、1 个语义 Runbook 指引场景（`semantic-runbook-cert-config`）。
+   - 三组消融实测结果（`python -m app.eval run-m6` / `python -m app.eval check`）：
+     - `no_memory`：Top-1 = `0.3333`（2/6），污染拒斥率 = `1.0`
+     - `episodic`：Top-1 = `0.6667`（4/6，`+0.3334` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
+     - `episodic_plus_semantic`：Top-1 = `1.0000`（6/6，`+0.3333` vs `episodic`，`+0.6667` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
+   - 因 `episodic` 与 `semantic` 两层均取得显著正向 Top-1 收益，`layer_gating` 判定两层均默认启用（若任一层收益 `<= 0` 则自动默认禁用）。
+   - **口径约束**：`m6-v1` 仅在与同数据集的 `no_memory` 基线对照时衡量记忆层净收益，严禁与 `frozen-v1`（29 场景）上的 M3/M4 历史基线直接相减。

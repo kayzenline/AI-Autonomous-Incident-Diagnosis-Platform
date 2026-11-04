@@ -1,0 +1,69 @@
+{
+  "set": "m6-v1",
+  "scenarios": [
+    {
+      "id": "episodic-multidep-inventory-pool",
+      "sha256": "2861ae5481413610193e5872c925d78af64431b285ca653d7991968182f25e0f",
+      "tags": [
+        "fault",
+        "episodic_clue",
+        "multi_hop",
+        "database"
+      ],
+      "holdout": false
+    },
+    {
+      "id": "memory-contamination-bad-deploy",
+      "sha256": "de5281f928f579c1a5662b2ca5bc7563afd0b9119e233074b4204d21eb7fc226",
+      "tags": [
+        "fault",
+        "memory_contamination",
+        "database"
+      ],
+      "holdout": false
+    },
+    {
+      "id": "memory-contamination-cpu-herring",
+      "sha256": "d8080966c0cbaa1b4d0224bc04b57c57614c4b91d3722d35df1323c112cf6c23",
+      "tags": [
+        "fault",
+        "memory_contamination",
+        "network"
+      ],
+      "holdout": false
+    },
+    {
+      "id": "semantic-runbook-cert-config",
+      "sha256": "899d8439747351a64313c76f8cf8335febfdebff751a059f54374b223f3271b8",
+      "tags": [
+        "fault",
+        "semantic_runbook",
+        "multi_hop",
+        "config"
+      ],
+      "holdout": false
+    },
+    {
+      "id": "stale-service-checkout-v2-pool",
+      "sha256": "e152bb8fff4c9690aeee071d1978a55a100dfbfef50970bce9a6038699d153ea",
+      "tags": [
+        "fault",
+        "stale_memory",
+        "multi_hop",
+        "database"
+      ],
+      "holdout": false
+    },
+    {
+      "id": "stale-service-gateway-v3-dns",
+      "sha256": "b29d54e44553f2c079aa2d6009e04562693e01efcd34cf3144be764869bd9d65",
+      "tags": [
+        "fault",
+        "stale_memory",
+        "semantic_runbook",
+        "network"
+      ],
+      "holdout": false
+    }
+  ]
+}

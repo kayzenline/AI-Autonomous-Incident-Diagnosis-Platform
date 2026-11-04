@@ -1,4 +1,4 @@
-"""Create a run, read it, stream its events, or cancel it.
+"""Create a run, read it, stream its events, cancel it, or submit feedback.
 
 A new run is 202. The same idempotency key is 202 while the run is active
 and 200 once it is terminal. A second active run is 409.
@@ -13,11 +13,19 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from app.api.auth import require_api_key
-from app.eval.scenario import frozen_dir
-from app.executor.service import request_cancel, schedule
+from app.core.taxonomy import Cause
+from app.executor.service import request_cancel, resolve_scenario_path, schedule
+from app.memory.models import FeedbackVerdict
 from app.persistence.models import RunRow
 from app.persistence.outcomes import ACTIVE
-from app.persistence.store import StoreError, cancel_run, events_after, get_run, start_run
+from app.persistence.store import (
+    StoreError,
+    cancel_run,
+    events_after,
+    get_run,
+    record_run_feedback,
+    start_run,
+)
 
 router = APIRouter(prefix="/v1", tags=["runs"])
 
@@ -26,6 +34,16 @@ class RunCreate(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     scenario_id: str | None = None
+    inherit_prior_runs: bool = True
+    is_eval: bool = False
+
+
+class FeedbackCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    verdict: FeedbackVerdict
+    true_cause: Cause | None = None
+    notes: str | None = None
 
 
 class RunPublic(BaseModel):
@@ -68,13 +86,21 @@ async def post_run(
     _: None = Depends(require_api_key),
 ) -> JSONResponse:
     scenario_id = None if body is None else body.scenario_id
-    if scenario_id is not None and not (frozen_dir() / f"{scenario_id}.yaml").is_file():
+    inherit_prior = True if body is None else body.inherit_prior_runs
+    is_eval = False if body is None else body.is_eval
+    if scenario_id is not None and resolve_scenario_path(scenario_id) is None:
         raise HTTPException(status_code=422, detail="Unknown scenario_id.")
     key = idempotency_key.strip() if idempotency_key else None
     if key == "":
         key = None
     try:
-        run, created = await start_run(incident_id, key, scenario_id)
+        run, created = await start_run(
+            incident_id,
+            key,
+            scenario_id,
+            inherit_prior_runs=inherit_prior,
+            is_eval=is_eval,
+        )
     except StoreError as exc:
         raise _http(exc) from exc
     if created:
@@ -151,3 +177,21 @@ async def post_cancel(run_id: str, _: None = Depends(require_api_key)) -> JSONRe
     except StoreError as exc:
         raise _http(exc) from exc
     return JSONResponse(status_code=200, content=_public(run))
+
+
+@router.post("/runs/{run_id}/feedback")
+async def post_feedback(
+    run_id: str,
+    body: FeedbackCreate,
+    _: None = Depends(require_api_key),
+) -> JSONResponse:
+    try:
+        result = await record_run_feedback(
+            run_id,
+            body.verdict,
+            body.true_cause,
+            body.notes,
+        )
+    except StoreError as exc:
+        raise _http(exc) from exc
+    return JSONResponse(status_code=200, content=result)

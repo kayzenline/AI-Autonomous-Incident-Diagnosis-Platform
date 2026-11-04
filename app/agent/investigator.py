@@ -33,16 +33,26 @@ from app.core.taxonomy import CAUSE_CATEGORY, CAUSE_SUMMARY, Cause, Verdict
 from app.core.telemetry import traced
 from app.core.window import TimeRange, default_window
 from app.llm.port import LLMMessage, LLMPort, LLMRequest
+from app.memory.models import (
+    MemoryLayer,
+    MemoryQuery,
+    MemoryRecallRecord,
+    PriorRunContext,
+    TrustLevel,
+)
+from app.memory.port import MemoryPort
 from app.schemas.incident import IncidentCreate
 from app.tools.contract import (
     MetricName,
     QueryMetricsInput,
     SearchLogsInput,
+    SearchMemoryInput,
     ServiceWindowInput,
     ToolResult,
     ToolStatus,
 )
 from app.tools.port import AsyncToolPort, ToolPort, ensure_async_tools
+from app.tools.redact import wrap_untrusted
 
 InvestigationStatus = Literal[
     "COMPLETED",
@@ -84,6 +94,9 @@ class InvestigationResult(BaseModel):
     first_output_illegal_citation: bool = False
     first_output_illegal_citation_rate: float = Field(default=0.0, ge=0.0, le=1.0)
     accepted_illegal_citation_rate: float = Field(default=0.0, ge=0.0, le=1.0)
+    recalled_memories: tuple[MemoryRecallRecord, ...] = ()
+    cited_memory_ids: tuple[str, ...] = ()
+    inherited_rejected_causes: tuple[Cause, ...] = ()
     events: tuple[TraceEvent, ...] = ()
     failure_reason: str | None = None
 
@@ -109,9 +122,9 @@ INVESTIGATOR_SYSTEM_PROMPT = (
 )
 
 
-def investigation_contract() -> dict[str, Any]:
+def investigation_contract(*, include_search_memory: bool = False) -> dict[str, Any]:
     """Public tool/report contracts only; never scenario answers or observations."""
-    tools = (
+    tools: list[tuple[str, str, type[BaseModel]]] = [
         ("query_metrics", "Read one metric over a service time window.", QueryMetricsInput),
         (
             "search_logs",
@@ -126,7 +139,15 @@ def investigation_contract() -> dict[str, Any]:
         ),
         ("get_dependency_health", "Read downstream dependency health.", ServiceWindowInput),
         ("query_db_health", "Read database connection health.", ServiceWindowInput),
-    )
+    ]
+    if include_search_memory:
+        tools.append(
+            (
+                "search_memory",
+                "Search episodic incident memories and semantic service runbooks.",
+                SearchMemoryInput,
+            )
+        )
     return {
         "tool_catalog": [
             {
@@ -153,6 +174,11 @@ async def investigate(
     wall_clock: ClockPort | None = None,
     scenario_clock: ClockPort | None = None,
     known_services: Sequence[str] | None = None,
+    memory: MemoryPort | None = None,
+    memory_layers: Sequence[MemoryLayer] | None = None,
+    service_version: str | None = None,
+    prior_context: PriorRunContext | None = None,
+    is_eval: bool = False,
     on_event: Callable[[TraceEvent], Awaitable[None]] | None = None,
     cancel_event: asyncio.Event | None = None,
 ) -> InvestigationResult:
@@ -161,7 +187,10 @@ async def investigate(
     started_wall = w_clock.now()
     events: list[TraceEvent] = []
     ledger = EvidenceLedger()
-    board = HypothesisBoard()
+    inherited_causes: tuple[Cause, ...] = (
+        () if is_eval or prior_context is None else tuple(prior_context.rejected_causes)
+    )
+    board = HypothesisBoard(initial_rejected=set(inherited_causes))
     async_tools = ensure_async_tools(tools)
 
     tokens_in = 0
@@ -243,6 +272,19 @@ async def investigate(
         window=None if window is None else window.model_dump(mode="json"),
     )
 
+    for rej_cause in inherited_causes:
+        await _emit(
+            TraceEventType.HYPOTHESIS_UPDATED,
+            f"Inherited rejected hypothesis {rej_cause.value} from prior run.",
+            cause=rej_cause.value,
+            cause_summary="Previously rejected hypothesis.",
+            category=CAUSE_CATEGORY[rej_cause].value,
+            confidence=0.0,
+            status=HypothesisStatus.REJECTED.value,
+            version=1,
+            inherited=True,
+        )
+
     if resolved_service is None or window is None:
         unknown_report = DiagnosisReport(
             verdict=Verdict.UNKNOWN,
@@ -261,39 +303,86 @@ async def investigate(
             tokens_in=tokens_in,
             tokens_out=tokens_out,
             cost_usd=_cost(),
+            inherited_rejected_causes=inherited_causes,
             events=tuple(events),
         )
+
+    # 1b. Optional M6 post-triage memory recall
+    active_layers: tuple[MemoryLayer, ...] = ()
+    if memory is not None:
+        active_layers = tuple(
+            memory_layers if memory_layers is not None else memory.config.enabled_layers
+        )
+    memory_enabled = memory is not None and bool(active_layers)
+    resolved_version = service_version
+    if resolved_version is None and isinstance(incident.metadata, dict):
+        raw_ver = incident.metadata.get("service_version")
+        if isinstance(raw_ver, str) and raw_ver:
+            resolved_version = raw_ver
+
+    recall_map: dict[str, MemoryRecallRecord] = {}
+    if memory_enabled and memory is not None:
+        initial_scored = await memory.search(
+            MemoryQuery(
+                query=f"{incident.title} {incident.description}",
+                service=resolved_service,
+                layers=active_layers,
+                include_candidate=True,
+                service_version=resolved_version,
+                reference_time=detected_at,
+                limit=5,
+            )
+        )
+        for sm in initial_scored:
+            recall_map[sm.item.id] = _to_recall_record(sm, injected=True)
+
+    initial_payload: dict[str, Any] = {
+        "task": "investigate",
+        **investigation_contract(include_search_memory=memory_enabled),
+        "known_services": list(topology),
+        "incident": {
+            "title": incident.title,
+            "description": incident.description,
+            "service": resolved_service,
+            "occurred_at": (
+                None if incident.occurred_at is None else incident.occurred_at.isoformat()
+            ),
+            "detected_at": None if detected_at is None else detected_at.isoformat(),
+        },
+        "default_window": window.model_dump(mode="json"),
+        "max_tool_calls": cfg.max_tool_calls,
+    }
+    if memory_enabled:
+        initial_payload["memory_policy"] = (
+            "Memories are clues only and must be verified against current tool evidence. "
+            "Never diagnose a fault without corroborating current tool evidence in EvidenceLedger."
+        )
+        initial_payload["service_version"] = resolved_version
+        initial_payload["recalled_memories"] = [
+            _format_memory_clue(rec) for rec in recall_map.values()
+        ]
+    if (
+        not is_eval
+        and prior_context is not None
+        and (prior_context.rejected_causes or prior_context.evidence_summaries)
+    ):
+        initial_payload["inherited_prior_runs"] = {
+            "prior_run_ids": list(prior_context.prior_run_ids),
+            "rejected_causes": [c.value for c in prior_context.rejected_causes],
+            "evidence_summaries": list(prior_context.evidence_summaries),
+        }
 
     messages: list[LLMMessage] = [
         LLMMessage(role="system", content=INVESTIGATOR_SYSTEM_PROMPT),
         LLMMessage(
             role="user",
-            content=json.dumps(
-                {
-                    "task": "investigate",
-                    **investigation_contract(),
-                    "known_services": list(topology),
-                    "incident": {
-                        "title": incident.title,
-                        "description": incident.description,
-                        "service": resolved_service,
-                        "occurred_at": (
-                            None
-                            if incident.occurred_at is None
-                            else incident.occurred_at.isoformat()
-                        ),
-                        "detected_at": None if detected_at is None else detected_at.isoformat(),
-                    },
-                    "default_window": window.model_dump(mode="json"),
-                    "max_tool_calls": cfg.max_tool_calls,
-                },
-                sort_keys=True,
-            ),
+            content=json.dumps(initial_payload, sort_keys=True),
         ),
     ]
 
     no_evidence_streak = 0
     raw_final_report: str | None = None
+    explicit_cited_memory_ids: list[str] | None = None
 
     # 2. Investigate Loop
     while model_rounds < cfg.max_model_rounds:
@@ -380,6 +469,10 @@ async def investigate(
             await _apply_hypothesis_updates(board, step_data["hypotheses"], _emit)
 
         if action == "final_report" and step_data is not None and "report" in step_data:
+            if isinstance(step_data.get("cited_memory_ids"), list):
+                explicit_cited_memory_ids = [
+                    str(mid) for mid in step_data["cited_memory_ids"] if isinstance(mid, str)
+                ]
             report_obj = step_data["report"]
             raw_final_report = report_obj if isinstance(report_obj, str) else json.dumps(report_obj)
             break
@@ -445,6 +538,8 @@ async def investigate(
                 cost_usd=_cost(),
                 service_inferred_by_model=inferred_by_model,
                 resolved_service=resolved_service,
+                recalled_memories=tuple(recall_map.values()),
+                inherited_rejected_causes=inherited_causes,
                 events=tuple(events),
             )
 
@@ -455,13 +550,25 @@ async def investigate(
             arguments=args_dict,
         )
         started_call = time.perf_counter()
-        tool_result, service_used, range_used = await _dispatch_tool(
-            tool_name=tool_name,
-            args_dict=args_dict,
-            default_service=resolved_service,
-            default_range=window,
-            tools=async_tools,
-        )
+        if tool_name == "search_memory" and memory_enabled and memory is not None:
+            tool_result, service_used, range_used = await _dispatch_search_memory(
+                args_dict=args_dict,
+                default_service=resolved_service,
+                default_range=window,
+                memory=memory,
+                active_layers=active_layers,
+                service_version=resolved_version,
+                reference_time=detected_at,
+                recall_map=recall_map,
+            )
+        else:
+            tool_result, service_used, range_used = await _dispatch_tool(
+                tool_name=tool_name,
+                args_dict=args_dict,
+                default_service=resolved_service,
+                default_range=window,
+                tools=async_tools,
+            )
         latency_ms = round((time.perf_counter() - started_call) * 1000, 3)
         added_items = ledger.record_tool_call(
             tool=tool_name,
@@ -541,6 +648,8 @@ async def investigate(
             cost_usd=_cost(),
             service_inferred_by_model=inferred_by_model,
             resolved_service=resolved_service,
+            recalled_memories=tuple(recall_map.values()),
+            inherited_rejected_causes=inherited_causes,
             events=tuple(events),
         )
 
@@ -553,11 +662,18 @@ async def investigate(
     first_illegal_rate = first_check.illegal_citation_rate
 
     if first_check.valid and first_check.report is not None:
+        final_recalls, cited_ids = _finalize_memory_citations(
+            recall_map,
+            first_check.report,
+            board,
+            explicit_cited_memory_ids,
+        )
         await _emit(
             TraceEventType.FINAL_REPORT,
             f"Final report verified with verdict {first_check.report.verdict.value}.",
             verdict=first_check.report.verdict.value,
             attempts=1,
+            cited_memory_ids=list(cited_ids),
         )
         return InvestigationResult(
             status="COMPLETED",
@@ -575,6 +691,9 @@ async def investigate(
             first_output_illegal_citation=False,
             first_output_illegal_citation_rate=0.0,
             accepted_illegal_citation_rate=0.0,
+            recalled_memories=final_recalls,
+            cited_memory_ids=cited_ids,
+            inherited_rejected_causes=inherited_causes,
             events=tuple(events),
         )
 
@@ -620,6 +739,10 @@ async def investigate(
 
     retry_parsed = _parse_json_dict(retry_resp.content)
     if retry_parsed and retry_parsed.get("action") == "final_report" and "report" in retry_parsed:
+        if isinstance(retry_parsed.get("cited_memory_ids"), list):
+            explicit_cited_memory_ids = [
+                str(mid) for mid in retry_parsed["cited_memory_ids"] if isinstance(mid, str)
+            ]
         rep_val = retry_parsed["report"]
         retry_raw = rep_val if isinstance(rep_val, str) else json.dumps(rep_val)
     else:
@@ -627,11 +750,18 @@ async def investigate(
 
     second_check = verifier.verify_raw(retry_raw)
     if second_check.valid and second_check.report is not None:
+        final_recalls, cited_ids = _finalize_memory_citations(
+            recall_map,
+            second_check.report,
+            board,
+            explicit_cited_memory_ids,
+        )
         await _emit(
             TraceEventType.FINAL_REPORT,
             f"Retry report verified with verdict {second_check.report.verdict.value}.",
             verdict=second_check.report.verdict.value,
             attempts=2,
+            cited_memory_ids=list(cited_ids),
         )
         return InvestigationResult(
             status="COMPLETED",
@@ -649,6 +779,9 @@ async def investigate(
             first_output_illegal_citation=first_has_illegal,
             first_output_illegal_citation_rate=first_illegal_rate,
             accepted_illegal_citation_rate=0.0,
+            recalled_memories=final_recalls,
+            cited_memory_ids=cited_ids,
+            inherited_rejected_causes=inherited_causes,
             events=tuple(events),
         )
 
@@ -673,9 +806,140 @@ async def investigate(
         first_output_illegal_citation=first_has_illegal,
         first_output_illegal_citation_rate=first_illegal_rate,
         accepted_illegal_citation_rate=0.0,
+        recalled_memories=tuple(recall_map.values()),
+        inherited_rejected_causes=inherited_causes,
         events=tuple(events),
         failure_reason=second_check.error or first_check.error,
     )
+
+
+def _to_recall_record(scored: Any, *, injected: bool) -> MemoryRecallRecord:
+    item = scored.item
+    return MemoryRecallRecord(
+        memory_id=item.id,
+        layer=item.layer,
+        service=item.service,
+        category=item.category,
+        cause=item.cause,
+        trust_level=item.trust_level,
+        service_version=item.service_version,
+        stale=bool(scored.stale),
+        score=float(scored.score),
+        injected=injected,
+        cited=False,
+        summary=item.summary,
+        content=item.content,
+    )
+
+
+def _format_memory_clue(rec: MemoryRecallRecord) -> dict[str, Any]:
+    return {
+        "memory_id": rec.memory_id,
+        "layer": rec.layer.value,
+        "service": rec.service,
+        "category": None if rec.category is None else rec.category.value,
+        "cause": None if rec.cause is None else rec.cause.value,
+        "trust_level": rec.trust_level.value,
+        "service_version": rec.service_version,
+        "stale": rec.stale,
+        "score": rec.score,
+        "summary": wrap_untrusted(rec.summary),
+        "content": wrap_untrusted(rec.content),
+    }
+
+
+async def _dispatch_search_memory(
+    *,
+    args_dict: dict[str, Any],
+    default_service: str,
+    default_range: TimeRange,
+    memory: MemoryPort,
+    active_layers: Sequence[MemoryLayer],
+    service_version: str | None,
+    reference_time: Any,
+    recall_map: dict[str, MemoryRecallRecord],
+) -> tuple[ToolResult, str, TimeRange]:
+    query_str = str(args_dict.get("query") or "").strip()
+    svc_raw = args_dict.get("service")
+    service = str(svc_raw) if isinstance(svc_raw, str) and svc_raw else default_service
+    include_candidate = bool(args_dict.get("include_candidate", True))
+    if not query_str:
+        return (
+            ToolResult(
+                status=ToolStatus.ERROR,
+                summary="search_memory requires a non-empty query string.",
+            ),
+            service,
+            default_range,
+        )
+    scored = await memory.search(
+        MemoryQuery(
+            query=query_str,
+            service=service,
+            layers=tuple(active_layers),
+            include_candidate=include_candidate,
+            service_version=service_version,
+            reference_time=reference_time,
+            limit=5,
+        )
+    )
+    clues: list[dict[str, Any]] = []
+    for sm in scored:
+        rec = _to_recall_record(sm, injected=False)
+        if rec.memory_id not in recall_map:
+            recall_map[rec.memory_id] = rec
+        clues.append(_format_memory_clue(recall_map[rec.memory_id]))
+    return (
+        ToolResult(
+            status=ToolStatus.OK,
+            summary=f"Retrieved {len(clues)} memory item(s) for {service}.",
+            evidence_keys=[],
+            data={"service": service, "memories": clues},
+        ),
+        service,
+        default_range,
+    )
+
+
+def _finalize_memory_citations(
+    recall_map: dict[str, MemoryRecallRecord],
+    report: DiagnosisReport,
+    board: HypothesisBoard,
+    explicit_ids: list[str] | None,
+) -> tuple[tuple[MemoryRecallRecord, ...], tuple[str, ...]]:
+    if not recall_map:
+        return (), ()
+    rejected_causes = {
+        rec.cause for rec in board.records() if rec.status == HypothesisStatus.REJECTED
+    }
+    cited_set: list[str] = []
+    if explicit_ids is not None:
+        for mid in explicit_ids:
+            rec = recall_map.get(mid)
+            if (
+                rec is not None
+                and not rec.stale
+                and rec.trust_level != TrustLevel.REJECTED
+                and (rec.cause is None or rec.cause not in rejected_causes)
+                and mid not in cited_set
+            ):
+                cited_set.append(mid)
+    elif report.verdict == Verdict.FAULT and report.hypotheses:
+        top = report.hypotheses[0]
+        for mid, rec in recall_map.items():
+            if rec.stale or rec.trust_level == TrustLevel.REJECTED:
+                continue
+            if rec.cause is not None and rec.cause in rejected_causes:
+                continue
+            if rec.cause == top.cause or (
+                rec.layer == MemoryLayer.SEMANTIC and rec.category in {None, top.category}
+            ):
+                cited_set.append(mid)
+
+    updated: list[MemoryRecallRecord] = []
+    for mid, rec in recall_map.items():
+        updated.append(rec.model_copy(update={"cited": mid in cited_set}))
+    return tuple(updated), tuple(cited_set)
 
 
 async def _dispatch_tool(
@@ -798,8 +1062,13 @@ async def _apply_hypothesis_updates(
             TraceEventType.HYPOTHESIS_UPDATED,
             f"Hypothesis {cause.value} -> {status.value} ({confidence:.2f}).",
             cause=cause.value,
+            cause_summary=rec.cause_summary,
+            category=rec.category.value,
+            confidence=rec.confidence,
             status=status.value,
             version=rec.version,
+            supporting_evidence=rec.supporting_evidence,
+            contradicting_evidence=rec.contradicting_evidence,
         )
 
 

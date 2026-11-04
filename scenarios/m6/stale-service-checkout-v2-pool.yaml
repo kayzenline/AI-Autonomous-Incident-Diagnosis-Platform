@@ -1,0 +1,111 @@
+# Stale v1.4 memory blames local checkout config_error, while v2.0 episodic
+# memory notes that checkout v2.0 delegates order writes to downstream `payments`
+# (which is the 3rd dependency behind healthy `auth` and `catalog`).
+id: stale-service-checkout-v2-pool
+title: "Checkout v2.0 downstream payments pool exhaustion with stale v1.4 memory"
+service: checkout
+tags: [fault, stale_memory, multi_hop, database]
+holdout: false
+incident:
+  title: Checkout order submission failing after v2.0 split
+  description: Checkout order submissions are failing with upstream 5xx in v2.0.
+  service: checkout
+  occurred_at: 2026-10-28T12:00:00Z
+  detected_at: 2026-10-28T12:10:00Z
+  user_severity: high
+  metadata:
+    service_version: "v2.0"
+world:
+  services: [checkout, auth, catalog, payments]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 25}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 34}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 19}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 820}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 8}
+    - service: checkout
+      metric: db_connections
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 12}
+    - service: auth
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 0}
+    - service: catalog
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 0}
+    - service: payments
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 18}
+    - service: payments
+      metric: db_connections
+      evidence_key: "metric:payments_v2_db_conn"
+      points:
+        - {at: 2026-10-28T12:05:00Z, value: 98}
+  logs:
+    - service: payments
+      at: 2026-10-28T12:06:00Z
+      level: ERROR
+      message: "connection pool exhausted on payments primary database"
+      evidence_key: "log:payments_v2_pool_exhausted"
+  changes: []
+  dependencies:
+    - service: checkout
+      name: auth
+      status: healthy
+      latency_ms: 15
+      evidence_key: "dep:auth_healthy"
+    - service: checkout
+      name: catalog
+      status: healthy
+      latency_ms: 22
+      evidence_key: "dep:catalog_healthy"
+    - service: checkout
+      name: payments
+      status: healthy
+      latency_ms: 48
+      evidence_key: "dep:payments_healthy"
+  databases:
+    - service: auth
+      connections_pct: 18
+      waiters: 0
+    - service: payments
+      connections_pct: 98
+      waiters: 35
+      evidence_key: "db:payments_v2_pool"
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+    - service: auth
+      request_rate_ratio: 1.0
+    - service: catalog
+      request_rate_ratio: 1.0
+    - service: payments
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DATABASE
+  cause: db_pool_exhausted
+  severity: high
+  key_evidence_keys:
+    - "db:payments_v2_pool"
+    - "metric:payments_v2_db_conn"
+    - "log:payments_v2_pool_exhausted"

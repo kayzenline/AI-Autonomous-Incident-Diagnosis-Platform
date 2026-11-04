@@ -1,6 +1,6 @@
 # AgentOps
 
-Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M2 persists incidents and runs in SQLite or Postgres, executes the M4 investigator in-process, and streams `RunEvent` rows over SSE. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). CI eval gates (M5) are next. See [`docs/handoff.md`](docs/handoff.md) for the step-by-step engineering rationale and handoff guide.
+Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M2 persists incidents and runs in SQLite or Postgres, executes the M4 investigator in-process, and streams `RunEvent` rows over SSE. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). Milestone M5 is done: CI eval gates, nightly evaluation harness, OpenTelemetry tracing, and the archived DeepSeek no-memory measurement (`evals/measurements/2026-10-30-deepseek-repaired.json`). Milestone M6 is done: evidence-checked episodic memory, service/runbook semantic knowledge, citation-only feedback trust transitions, and 3-way ablations (`evals/baselines/m6-ablation.json`). See [`docs/handoff.md`](docs/handoff.md) for the step-by-step engineering rationale and handoff guide.
 
 ## Architecture
 
@@ -147,10 +147,11 @@ python -m app.eval replay
 python -m app.eval inspect drilldown-truncated-dns --mode m4
 python -m app.eval run-m3 --provider fake
 python -m app.eval run-m4 --provider fake
+python -m app.eval run-m6 --provider fake
 python -m app.eval compare evals/baselines/m3-single-shot.json evals/baselines/m4-agent.json
 ```
 
-`check` fails when a fresh run does not match the committed M1/M3/M4 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`, `evals/baselines/m4-agent.json`, `evals/baselines/m4-vs-m3.json`), the scenario hashes (`evals/baselines/frozen-manifest.json`), or the M4 cassette replay (`evals/cassettes/m4-frozen.json`). To run M3 or M4 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and pass `--provider openai`.
+`check` fails when a fresh run does not match the committed M1/M3/M4/M6 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`, `evals/baselines/m4-agent.json`, `evals/baselines/m4-vs-m3.json`, `evals/baselines/m6-ablation.json`), the scenario hashes (`evals/baselines/frozen-manifest.json`, `evals/baselines/m6-manifest.json`), or the M4 cassette replay (`evals/cassettes/m4-frozen.json`). To run M3, M4, or M6 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and pass `--provider openai`.
 
 ## Persist and diagnose
 
@@ -263,3 +264,36 @@ Reports retain the endpoint hostname, requested temperature/thinking mode, model
 alias and model identifiers returned by the API. Alias versions can change, so
 compare dated runs with the recorded settings and frozen manifest. No private
 reasoning content is saved.
+
+## M6 memory and ablations
+
+M6 adds two evidence-checked memory layers (`episodic` incident history and
+`semantic` service/runbook notes) backed by Alembic migration `0002_m6`
+(`hypotheses`, `hypothesis_evidence`, `feedback`, `memory_items`, and
+`memory_recalls`):
+
+- **Redaction & deduplication**: Every `MemoryItem` write passes through
+  `redact_text` (stripping secrets, emails, and mapping internal IPs to
+  `<ip-N>`) and merges near-duplicate items above a configurable similarity
+  threshold while incrementing `usage_count`.
+- **Hybrid retrieval**: `rank_memories` combines vector cosine similarity +
+  Okapi BM25 lexical scores with exponential time decay, trust weighting
+  (`CONFIRMED > CANDIDATE`, `QUARANTINED` excluded), and `service_version` /
+  `valid_until` staleness checks.
+- **Citation-only feedback transitions (`POST /v1/runs/{id}/feedback`)**:
+  - `verdict="correct"` promotes only the run's produced `CANDIDATE` memory and
+    recalled memories with `cited=true` to `CONFIRMED` (recalled-but-uncited
+    memories are never promoted).
+  - `verdict="incorrect"` moves the run's produced memory and `cited=true`
+    recalled memories to `QUARANTINED`.
+  - `verdict="partial"` records the audit `Feedback` row without changing trust
+    levels.
+- **Default confirmed-only search (`GET /v1/memory/search`)**: Returns only
+  `CONFIRMED` items by default (`include_candidate=false`); pass
+  `include_candidate=true` to inspect `CANDIDATE` items.
+- **3-way ablation on `m6-v1` (`scenarios/m6/*.yaml`, `evals/baselines/m6-ablation.json`)**:
+  Compares `no_memory` (`Top-1 = 0.3333`), `episodic` (`Top-1 = 0.6667`), and
+  `episodic_plus_semantic` (`Top-1 = 1.0000`) with `contamination_refusal_rate = 1.0`,
+  `memory_recall_at_k = 1.0`, and `memory_citation_precision = 1.0`. Scores on
+  `m6-v1` are compared only against the `no_memory` baseline on `m6-v1` and are
+  never subtracted directly from `frozen-v1` (29-scenario) M3/M4 baselines.

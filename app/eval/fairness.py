@@ -7,6 +7,9 @@ from types import ModuleType
 
 from app.agent import baseline, investigator, ledger, single_shot, verifier
 from app.llm.adapters import fake, investigator_fake, openai
+from app.memory import models as memory_models
+from app.memory import port as memory_port
+from app.memory import retrieval as memory_retrieval
 
 
 def assert_baseline_is_isolated() -> None:
@@ -19,6 +22,9 @@ def assert_baseline_is_isolated() -> None:
         fake,
         investigator_fake,
         openai,
+        memory_models,
+        memory_port,
+        memory_retrieval,
     ):
         _assert_module_is_isolated(mod)
 

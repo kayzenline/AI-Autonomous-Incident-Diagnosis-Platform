@@ -1,0 +1,70 @@
+# Contaminated episodic memory claims a recent bad_deploy caused checkout 5xx,
+# but current get_recent_changes(checkout) is empty and checkout DB pool is exhausted.
+id: memory-contamination-bad-deploy
+title: "Checkout 5xx with contaminated bad_deploy memory"
+service: checkout
+tags: [fault, memory_contamination, database]
+holdout: false
+incident:
+  title: Checkout 5xx spike during peak traffic
+  description: Checkout started returning 5xx errors during peak traffic window.
+  service: checkout
+  occurred_at: 2026-10-28T10:00:00Z
+  detected_at: 2026-10-28T10:10:00Z
+  user_severity: high
+  metadata:
+    service_version: "v2.0"
+world:
+  services: [checkout]
+  metrics_unavailable: false
+  metrics:
+    - service: checkout
+      metric: cpu
+      points:
+        - {at: 2026-10-28T10:05:00Z, value: 32}
+    - service: checkout
+      metric: memory
+      points:
+        - {at: 2026-10-28T10:05:00Z, value: 44}
+    - service: checkout
+      metric: disk
+      points:
+        - {at: 2026-10-28T10:05:00Z, value: 25}
+    - service: checkout
+      metric: latency_p99
+      points:
+        - {at: 2026-10-28T10:05:00Z, value: 950}
+    - service: checkout
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T10:05:00Z, value: 24}
+    - service: checkout
+      metric: db_connections
+      evidence_key: "metric:checkout_db_conn_high"
+      points:
+        - {at: 2026-10-28T10:05:00Z, value: 96}
+  logs:
+    - service: checkout
+      at: 2026-10-28T10:06:00Z
+      level: ERROR
+      message: "connection pool exhausted waiting for checkout primary db"
+      evidence_key: "log:checkout_pool_timeout"
+  changes: []
+  dependencies: []
+  databases:
+    - service: checkout
+      connections_pct: 96
+      waiters: 42
+      evidence_key: "db:checkout_pool_waiters"
+  statuses:
+    - service: checkout
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: DATABASE
+  cause: db_pool_exhausted
+  severity: high
+  key_evidence_keys:
+    - "log:checkout_pool_timeout"
+    - "metric:checkout_db_conn_high"
+    - "db:checkout_pool_waiters"

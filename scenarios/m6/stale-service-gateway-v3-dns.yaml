@@ -1,0 +1,98 @@
+# Stale v2.1 episodic memory blames bad_deploy on api-gateway / legacy-billing,
+# while v3.0 semantic runbook documents that v3.0 routes checkout traffic to
+# `settlement-router` (3rd dependency), where NXDOMAIN DNS failure is active.
+id: stale-service-gateway-v3-dns
+title: "API Gateway v3.0 downstream DNS failure guided by semantic runbook"
+service: api-gateway
+tags: [fault, stale_memory, semantic_runbook, network]
+holdout: false
+incident:
+  title: Gateway checkout route failing in v3.0
+  description: API Gateway v3.0 is returning 502 errors on settlement routes.
+  service: api-gateway
+  occurred_at: 2026-10-28T13:00:00Z
+  detected_at: 2026-10-28T13:10:00Z
+  user_severity: high
+  metadata:
+    service_version: "v3.0"
+world:
+  services: [api-gateway, legacy-billing, auth, settlement-router]
+  metrics_unavailable: false
+  metrics:
+    - service: api-gateway
+      metric: cpu
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 29}
+    - service: api-gateway
+      metric: memory
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 41}
+    - service: api-gateway
+      metric: disk
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 22}
+    - service: api-gateway
+      metric: latency_p99
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 780}
+    - service: api-gateway
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 12}
+    - service: api-gateway
+      metric: db_connections
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 10}
+    - service: legacy-billing
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 0}
+    - service: settlement-router
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T13:05:00Z, value: 26}
+  logs:
+    - service: settlement-router
+      at: 2026-10-28T13:06:00Z
+      level: ERROR
+      message: "NXDOMAIN looking up settlement-core.internal"
+      evidence_key: "log:settlement_nxdomain"
+  changes: []
+  dependencies:
+    - service: api-gateway
+      name: legacy-billing
+      status: healthy
+      latency_ms: 12
+      evidence_key: "dep:legacy_billing_ok"
+    - service: api-gateway
+      name: auth
+      status: healthy
+      latency_ms: 14
+      evidence_key: "dep:auth_ok"
+    - service: api-gateway
+      name: settlement-router
+      status: healthy
+      latency_ms: 45
+      evidence_key: "dep:settlement_router_ok"
+  databases:
+    - service: legacy-billing
+      connections_pct: 10
+      waiters: 0
+    - service: settlement-router
+      connections_pct: 15
+      waiters: 0
+  statuses:
+    - service: api-gateway
+      request_rate_ratio: 1.0
+    - service: legacy-billing
+      request_rate_ratio: 1.0
+    - service: auth
+      request_rate_ratio: 1.0
+    - service: settlement-router
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: NETWORK
+  cause: dns_failure
+  severity: high
+  key_evidence_keys: ["log:settlement_nxdomain"]

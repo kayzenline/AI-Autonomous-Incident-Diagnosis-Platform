@@ -1,0 +1,62 @@
+# Contaminated episodic memory blames cpu_saturation on payments,
+# but current CPU is 24% and payments ERROR logs show NXDOMAIN DNS failure.
+id: memory-contamination-cpu-herring
+title: "Payments webhook failures with contaminated cpu_saturation memory"
+service: payments
+tags: [fault, memory_contamination, network]
+holdout: false
+incident:
+  title: Payments webhook delivery failing
+  description: Outbound payment settlement requests are failing across workers.
+  service: payments
+  occurred_at: 2026-10-28T11:00:00Z
+  detected_at: 2026-10-28T11:10:00Z
+  user_severity: high
+  metadata:
+    service_version: "v2.0"
+world:
+  services: [payments]
+  metrics_unavailable: false
+  metrics:
+    - service: payments
+      metric: cpu
+      points:
+        - {at: 2026-10-28T11:05:00Z, value: 24}
+    - service: payments
+      metric: memory
+      points:
+        - {at: 2026-10-28T11:05:00Z, value: 38}
+    - service: payments
+      metric: disk
+      points:
+        - {at: 2026-10-28T11:05:00Z, value: 20}
+    - service: payments
+      metric: latency_p99
+      points:
+        - {at: 2026-10-28T11:05:00Z, value: 410}
+    - service: payments
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T11:05:00Z, value: 28}
+    - service: payments
+      metric: db_connections
+      points:
+        - {at: 2026-10-28T11:05:00Z, value: 15}
+  logs:
+    - service: payments
+      at: 2026-10-28T11:06:00Z
+      level: ERROR
+      message: "name resolution failed: NXDOMAIN for ledger.payments.internal"
+      evidence_key: "log:payments_dns_nxdomain"
+  changes: []
+  dependencies: []
+  databases: []
+  statuses:
+    - service: payments
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: NETWORK
+  cause: dns_failure
+  severity: high
+  key_evidence_keys: ["log:payments_dns_nxdomain"]

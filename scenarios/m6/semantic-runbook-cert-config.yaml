@@ -1,0 +1,106 @@
+# Semantic runbook for `edge-proxy` v2.2 directs TLS/upstream error investigations
+# to downstream `cert-manager` (3rd dependency), where a bad config push is verified.
+id: semantic-runbook-cert-config
+title: "Edge proxy TLS errors caused by downstream cert-manager config error"
+service: edge-proxy
+tags: [fault, semantic_runbook, multi_hop, config]
+holdout: false
+incident:
+  title: Edge proxy upstream TLS handshake errors
+  description: Edge proxy is returning 503 TLS handshake errors on ingress routes.
+  service: edge-proxy
+  occurred_at: 2026-10-28T15:00:00Z
+  detected_at: 2026-10-28T15:10:00Z
+  user_severity: high
+  metadata:
+    service_version: "v2.2"
+world:
+  services: [edge-proxy, static-cdn, waf-filter, cert-manager]
+  metrics_unavailable: false
+  metrics:
+    - service: edge-proxy
+      metric: cpu
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 26}
+    - service: edge-proxy
+      metric: memory
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 35}
+    - service: edge-proxy
+      metric: disk
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 18}
+    - service: edge-proxy
+      metric: latency_p99
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 640}
+    - service: edge-proxy
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 11}
+    - service: edge-proxy
+      metric: db_connections
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 8}
+    - service: static-cdn
+      metric: error_rate
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 0}
+    - service: cert-manager
+      metric: error_rate
+      evidence_key: "metric:cert_manager_err_high"
+      points:
+        - {at: 2026-10-28T15:05:00Z, value: 22}
+  logs:
+    - service: cert-manager
+      at: 2026-10-28T15:06:00Z
+      level: ERROR
+      message: "invalid config: failed to load config for upstream mTLS bundle"
+      evidence_key: "log:cert_invalid_config"
+  changes:
+    - service: cert-manager
+      at: 2026-10-28T14:58:00Z
+      kind: config
+      summary: "Rotate mTLS bundle path in cert-manager config"
+      evidence_key: "change:cert_config_bad"
+  dependencies:
+    - service: edge-proxy
+      name: static-cdn
+      status: healthy
+      latency_ms: 10
+      evidence_key: "dep:static_cdn_ok"
+    - service: edge-proxy
+      name: waf-filter
+      status: healthy
+      latency_ms: 14
+      evidence_key: "dep:waf_filter_ok"
+    - service: edge-proxy
+      name: cert-manager
+      status: healthy
+      latency_ms: 35
+      evidence_key: "dep:cert_manager_ok"
+  databases:
+    - service: static-cdn
+      connections_pct: 5
+      waiters: 0
+    - service: cert-manager
+      connections_pct: 12
+      waiters: 0
+  statuses:
+    - service: edge-proxy
+      request_rate_ratio: 1.0
+    - service: static-cdn
+      request_rate_ratio: 1.0
+    - service: waf-filter
+      request_rate_ratio: 1.0
+    - service: cert-manager
+      request_rate_ratio: 1.0
+ground_truth:
+  verdict: FAULT
+  category: CONFIG
+  cause: config_error
+  severity: high
+  key_evidence_keys:
+    - "change:cert_config_bad"
+    - "log:cert_invalid_config"
+    - "metric:cert_manager_err_high"
