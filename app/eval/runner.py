@@ -26,6 +26,11 @@ from app.eval.cassette import (
     save_cassette,
 )
 from app.eval.fairness import assert_baseline_is_isolated
+from app.eval.m6_ablation import (
+    check_m6_baselines,
+    run_m6_ablation,
+    write_m6_baselines,
+)
 from app.eval.scenario import Scenario, frozen_dir, load_frozen_scenarios
 from app.eval.score import cited_keys, evidence_precision, evidence_recall, top_hit
 from app.llm.adapters.fake import FakeLLMAdapter
@@ -238,6 +243,7 @@ def write_baselines() -> None:
     _dump(directory / M4_COMPARE_NAME, compare_reports(m3_report, m4_report))
     _dump(directory / MANIFEST_NAME, build_manifest())
     save_cassette(record_m4_cassette())
+    write_m6_baselines(directory)
 
 
 def check_baselines() -> None:
@@ -252,6 +258,7 @@ def check_baselines() -> None:
     _expect(directory / M4_COMPARE_NAME, compare_reports(m3_report, m4_report))
     _expect(directory / MANIFEST_NAME, build_manifest())
     replay_m4_cassette(load_cassette())
+    check_m6_baselines(directory)
 
 
 def format_inspection(scenario: Scenario, mode: str = "m4", *, as_json: bool = False) -> str:
@@ -352,6 +359,11 @@ def main(argv: list[str] | None = None) -> int:
     m4_parser.add_argument("--provider", choices=("fake", "openai"), default="fake")
     m4_parser.add_argument("--output", type=Path, default=None)
 
+    m6_parser = subparsers.add_parser("run-m6-ablation")
+    m6_parser.add_argument("--provider", choices=("fake", "openai"), default="fake")
+    m6_parser.add_argument("--repeats", type=int, default=1)
+    m6_parser.add_argument("--output", type=Path, default=None)
+
     inspect_parser = subparsers.add_parser("inspect")
     inspect_parser.add_argument("scenario_id")
     inspect_parser.add_argument("--mode", choices=("m1", "m3", "m4"), default="m4")
@@ -394,6 +406,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run-m4":
         llm_m4: LLMPort = OpenAIAdapter() if args.provider == "openai" else InvestigativeFakeLLM()
         report = build_m4_report(llm=llm_m4)
+        if args.output is not None:
+            _dump(args.output, report)
+        else:
+            print(json.dumps(report, indent=2))
+        return 0
+    if args.command == "run-m6-ablation":
+        factory = OpenAIAdapter if args.provider == "openai" else InvestigativeFakeLLM
+        report = run_m6_ablation(llm_factory=factory, repeats=max(1, int(args.repeats)))
         if args.output is not None:
             _dump(args.output, report)
         else:

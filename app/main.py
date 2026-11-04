@@ -6,6 +6,7 @@ from fastapi import FastAPI
 
 from app.api.errors import register_exception_handlers
 from app.api.incidents import router as incidents_router
+from app.api.memory import router as memory_router
 from app.api.runs import router as runs_router
 from app.api.scenarios import router as scenarios_router
 from app.core.telemetry import configure_telemetry, flush_telemetry
@@ -35,6 +36,7 @@ register_exception_handlers(app)
 app.include_router(scenarios_router)
 app.include_router(incidents_router)
 app.include_router(runs_router)
+app.include_router(memory_router)
 
 
 @app.get("/")

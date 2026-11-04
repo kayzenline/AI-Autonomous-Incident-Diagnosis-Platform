@@ -61,6 +61,16 @@ class ServiceWindowInput(BaseModel):
     time_range: TimeRange
 
 
+class SearchMemoryInput(BaseModel):
+    """Input for M6 follow-up memory search tool (FR-3, FR-7)."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    query: str = Field(min_length=1)
+    service: str | None = None
+    include_candidate: bool = True
+
+
 TOOL_INPUT_MODELS = (
     QueryMetricsInput,
     SearchLogsInput,

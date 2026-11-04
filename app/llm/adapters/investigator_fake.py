@@ -166,6 +166,14 @@ def _build_state(payloads: list[dict[str, Any]]) -> dict[str, Any]:
     root_service = str(incident.get("service") or "")
     window = init.get("default_window", {})
     max_calls = int(init.get("max_tool_calls", 8))
+    memory_active = "recalled_memories" in init
+    memories: list[dict[str, Any]] = [
+        m for m in (init.get("recalled_memories") or []) if isinstance(m, dict)
+    ]
+    has_search_memory = any(
+        isinstance(t, dict) and t.get("name") == "search_memory"
+        for t in (init.get("tool_catalog") or [])
+    )
 
     by_service: dict[str, dict[str, Any]] = {}
     called: set[tuple[str, str, str]] = set()
@@ -227,6 +235,11 @@ def _build_state(payloads: list[dict[str, Any]]) -> dict[str, Any]:
         elif tool == "query_db_health":
             called.add((tool, service, ""))
             s_obs["database"] = result
+        elif tool == "search_memory":
+            called.add((tool, service, ""))
+            extra = result.get("data", {}).get("memories", [])
+            if isinstance(extra, list):
+                memories.extend(m for m in extra if isinstance(m, dict))
 
     return {
         "root_service": root_service,
@@ -236,6 +249,9 @@ def _build_state(payloads: list[dict[str, Any]]) -> dict[str, Any]:
         "ledger_keys": set(ledger_keys),
         "remaining_tool_calls": remaining,
         "must_converge": must_converge,
+        "memory_active": memory_active,
+        "memories": memories,
+        "has_search_memory": has_search_memory,
     }
 
 
@@ -337,9 +353,18 @@ def _select_next_tool(state: dict[str, Any]) -> dict[str, Any] | None:
 
     err_max = _metric_max(root_obs["metrics"], "error_rate") or 0.0
     config_logs = _matching(root_obs["logs"], _CONFIG_TOKENS)
+    memory_active = bool(state.get("memory_active", False))
+    memories: list[dict[str, Any]] = state.get("memories", [])
 
-    # Step 4: If error_rate is elevated or config logs exist, check recent changes on s0
-    if (err_max >= 5.0 or config_logs) and ("get_recent_changes", s0, "") not in called:
+    # Step 4: If error_rate is elevated, config logs exist, or memory suggests deploy/config change
+    memory_wants_changes = memory_active and any(
+        m.get("cause") in {Cause.BAD_DEPLOY.value, Cause.CONFIG_ERROR.value} for m in memories
+    )
+    if (err_max >= 5.0 or config_logs or memory_wants_changes) and (
+        "get_recent_changes",
+        s0,
+        "",
+    ) not in called:
         return _call(
             tool="get_recent_changes",
             arguments={"service": s0},
@@ -347,14 +372,34 @@ def _select_next_tool(state: dict[str, Any]) -> dict[str, Any] | None:
         )
 
     changes = (root_obs["changes"] or {}).get("data", {}).get("changes", [])
-    if changes:
+    if changes and err_max >= 5.0:
         # Recent deploy/config change with elevated error_rate explains the incident
         return None
 
-    # Step 5: If s0 has downstream dependencies and elevated error_rate, drill down
+    # Step 5: If s0 has downstream dependencies and elevated error_rate (or memory clue), drill down
     dep_rows = (root_obs["dependencies"] or {}).get("data", {}).get("dependencies", [])
-    if dep_rows and err_max >= 5.0:
-        d1 = str(dep_rows[0].get("name") or "")
+    mem_target_dep = _select_memory_target_dependency(dep_rows, memories) if memory_active else None
+    if (
+        memory_active
+        and state.get("has_search_memory")
+        and len(dep_rows) > 1
+        and mem_target_dep is None
+        and ("search_memory", s0, "") not in called
+    ):
+        return _call(
+            tool="search_memory",
+            arguments={
+                "service": s0,
+                "query": f"{s0} downstream dependency failure runbook",
+            },
+            summary=f"Search service runbooks and episodic memories for {s0} dependencies.",
+        )
+
+    should_drill_down = bool(dep_rows) and (
+        err_max >= 5.0 or (memory_active and mem_target_dep is not None and err_max >= 1.0)
+    )
+    if should_drill_down:
+        d1 = mem_target_dep or str(dep_rows[0].get("name") or "")
         if d1:
             if ("get_dependency_health", d1, "") not in called:
                 return _call(
@@ -378,6 +423,27 @@ def _select_next_tool(state: dict[str, Any]) -> dict[str, Any] | None:
                         tool="query_metrics",
                         arguments={"service": d2, "metric": "error_rate"},
                         summary=f"Query error_rate on second-hop service {d2}.",
+                    )
+                return None
+
+            if memory_active and mem_target_dep == d1 and not _memory_wants_db(memories, d1):
+                if ("search_logs", d1, "default") not in called:
+                    return _call(
+                        tool="search_logs",
+                        arguments={"service": d1, "min_level": "ERROR"},
+                        summary=f"Search ERROR logs on memory-guided downstream service {d1}.",
+                    )
+                if ("get_recent_changes", d1, "") not in called:
+                    return _call(
+                        tool="get_recent_changes",
+                        arguments={"service": d1},
+                        summary=f"Check recent changes on memory-guided downstream service {d1}.",
+                    )
+                if ("query_metrics", d1, "error_rate") not in called:
+                    return _call(
+                        tool="query_metrics",
+                        arguments={"service": d1, "metric": "error_rate"},
+                        summary=f"Query error_rate on memory-guided downstream service {d1}.",
                     )
                 return None
 
@@ -498,6 +564,15 @@ def _finalize(state: dict[str, Any]) -> dict[str, Any]:
                 }
             )
         hyp_updates.extend(refuted_updates)
+        mem_cited: list[str] = []
+        if state.get("memory_active"):
+            mem_refuted, mem_cited = _memory_refutations_and_citations(
+                state.get("memories", []),
+                top_cause=top_cause,
+                existing_causes={u.get("cause") for u in hyp_updates},
+                inspected_services=set(by_service),
+            )
+            hyp_updates.extend(mem_refuted)
 
         error_max = _max_error_rate(by_service)
         report = DiagnosisReport(
@@ -521,12 +596,15 @@ def _finalize(state: dict[str, Any]) -> dict[str, Any]:
             ],
             unresolved_questions=[],
         )
-        return {
+        out_payload: dict[str, Any] = {
             "action": "final_report",
             "summary": f"Confirmed {top_cause.value} with {len(top_keys)} evidence key(s).",
             "hypotheses": hyp_updates,
             "report": report.model_dump(mode="json"),
         }
+        if state.get("memory_active"):
+            out_payload["cited_memory_ids"] = mem_cited
+        return out_payload
 
     if _is_confirmed_healthy(root_obs):
         report = DiagnosisReport(
@@ -535,21 +613,136 @@ def _finalize(state: dict[str, Any]) -> dict[str, Any]:
                 "All inspected metrics and dependencies are within normal bounds."
             ],
         )
-        return {
+        out_not_fault: dict[str, Any] = {
             "action": "final_report",
             "summary": "Confirmed NOT_A_FAULT across metrics, logs, and dependencies.",
             "report": report.model_dump(mode="json"),
         }
+        if state.get("memory_active"):
+            mem_refuted, _ = _memory_refutations_and_citations(
+                state.get("memories", []),
+                top_cause=None,
+                existing_causes=set(),
+                inspected_services=set(by_service),
+            )
+            if mem_refuted:
+                out_not_fault["hypotheses"] = mem_refuted
+            out_not_fault["cited_memory_ids"] = []
+        return out_not_fault
 
     report = DiagnosisReport(
         verdict=Verdict.UNKNOWN,
         unresolved_questions=["Observed signals do not establish a single root cause."],
     )
-    return {
+    out_unknown: dict[str, Any] = {
         "action": "final_report",
         "summary": "Abstaining with UNKNOWN due to ambiguous or sub-threshold signals.",
         "report": report.model_dump(mode="json"),
     }
+    if state.get("memory_active"):
+        mem_refuted, _ = _memory_refutations_and_citations(
+            state.get("memories", []),
+            top_cause=None,
+            existing_causes=set(),
+            inspected_services=set(by_service),
+        )
+        if mem_refuted:
+            out_unknown["hypotheses"] = mem_refuted
+        out_unknown["cited_memory_ids"] = []
+    return out_unknown
+
+
+def _memory_wants_db(memories: list[dict[str, Any]], dep_name: str) -> bool:
+    for mem in memories:
+        if mem.get("stale") or mem.get("trust_level") == "REJECTED":
+            continue
+        blob = f"{mem.get('summary', '')} {mem.get('content', '')}".casefold()
+        if dep_name.casefold() in blob and (
+            mem.get("category") == "DATABASE" or mem.get("cause") == Cause.DB_POOL_EXHAUSTED.value
+        ):
+            return True
+    return False
+
+
+def _select_memory_target_dependency(
+    dep_rows: list[Any],
+    memories: list[dict[str, Any]],
+) -> str | None:
+    if not dep_rows or not memories:
+        return None
+    dep_names = [
+        str(row.get("name") or "") for row in dep_rows if isinstance(row, dict) and row.get("name")
+    ]
+    if not dep_names:
+        return None
+    for mem in memories:
+        if mem.get("stale") or mem.get("trust_level") == "REJECTED":
+            continue
+        blob = f"{mem.get('summary', '')} {mem.get('content', '')}".casefold()
+        for dep_name in dep_names:
+            if dep_name.casefold() in blob:
+                return dep_name
+    return None
+
+
+def _memory_refutations_and_citations(
+    memories: list[dict[str, Any]],
+    *,
+    top_cause: Cause | None,
+    existing_causes: set[Any],
+    inspected_services: set[str],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    refuted: list[dict[str, Any]] = []
+    cited: list[str] = []
+    seen_causes = set(existing_causes)
+
+    for mem in memories:
+        mem_id = str(mem.get("memory_id") or "")
+        raw_cause = mem.get("cause")
+        mem_cause: Cause | None = None
+        if isinstance(raw_cause, str) and raw_cause:
+            try:
+                mem_cause = Cause(raw_cause)
+            except ValueError:
+                mem_cause = None
+
+        is_stale = bool(mem.get("stale"))
+        is_rejected = mem.get("trust_level") == "REJECTED"
+
+        if mem_cause is not None and (is_stale or mem_cause != top_cause):
+            if mem_cause.value not in seen_causes:
+                refuted.append(
+                    {
+                        "cause": mem_cause.value,
+                        "cause_summary": (
+                            f"Refuted memory clue {mem_id}: current tool evidence "
+                            f"does not support {mem_cause.value}."
+                        ),
+                        "status": "REJECTED",
+                        "confidence": 0.05,
+                        "supporting_evidence": [],
+                        "contradicting_evidence": [],
+                    }
+                )
+                seen_causes.add(mem_cause.value)
+            continue
+
+        if is_stale or is_rejected or top_cause is None or not mem_id:
+            continue
+
+        blob = (
+            f"{mem.get('service', '')} {mem.get('summary', '')} {mem.get('content', '')}"
+        ).casefold()
+        mentions_inspected = any(svc.casefold() in blob for svc in inspected_services if svc)
+        if mem_cause == top_cause or (
+            mem.get("layer") == "semantic"
+            and mem.get("category") in {None, CAUSE_CATEGORY[top_cause].value}
+            and mentions_inspected
+        ):
+            if mem_id not in cited:
+                cited.append(mem_id)
+
+    return refuted, cited
 
 
 def _evaluate_service(

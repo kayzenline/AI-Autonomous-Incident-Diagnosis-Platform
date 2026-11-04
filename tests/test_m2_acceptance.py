@@ -14,7 +14,7 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from app.eval.scenario import frozen_dir, load_scenario
-from app.persistence.models import EvidenceRow, RunEventRow, ToolCallRow
+from app.persistence.models import EvidenceRow, HypothesisRow, RunEventRow, ToolCallRow
 from app.persistence.session import dispose_engine, get_sessionmaker, reset_engine
 from app.persistence.store import create_incident, mark_running, start_run
 from app.schemas.incident import IncidentCreate
@@ -127,7 +127,10 @@ async def assert_evidence_links(run_id: str) -> None:
             evidence = list(
                 await session.scalars(select(EvidenceRow).where(EvidenceRow.run_id == run_id))
             )
-        assert calls and evidence
+            hypotheses = list(
+                await session.scalars(select(HypothesisRow).where(HypothesisRow.run_id == run_id))
+            )
+        assert calls and evidence and hypotheses
         result_ids = {row.id for row in events if row.type == "TOOL_RESULT"}
         assert {row.event_id for row in calls} <= result_ids
         assert {row.tool_call_id for row in evidence} <= {row.id for row in calls}
@@ -175,6 +178,16 @@ def test_migrated_database_cli_sse_and_process_restart(tmp_path: Path) -> None:
         assert "id: 0\n" in events.text
         assert "FINAL_REPORT" in events.text
         asyncio.run(assert_evidence_links(run_id))
+
+        feedback = client.post(
+            f"/v1/runs/{run_id}/feedback",
+            json={"verdict": "correct", "notes": "Confirmed CPU saturation"},
+        )
+        assert feedback.status_code == 200
+        assert len(feedback.json()["promoted_memory_ids"]) >= 1
+        mem_search = client.get("/v1/memory/search", params={"service": scenario.service})
+        assert mem_search.status_code == 200
+        assert len(mem_search.json()["items"]) >= 1
 
         active = asyncio.run(seed_active_runs())
         for active_incident, active_run, active_key in active:

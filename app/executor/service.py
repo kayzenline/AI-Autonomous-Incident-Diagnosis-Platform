@@ -1,10 +1,11 @@
-"""Run the M4 investigator without blocking the API loop.
+"""Run the investigator without blocking the API loop.
 
 Tool IO goes through ThreadedToolPort inside investigate(). Events are written
 as they are emitted. A client disconnect does not cancel the task.
 """
 
 import asyncio
+from pathlib import Path
 
 from app.agent.investigator import InvestigationResult, investigate
 from app.agent.ledger import TraceEvent
@@ -14,11 +15,15 @@ from app.eval.scenario import frozen_dir, load_scenario
 from app.llm.adapters.investigator_fake import InvestigativeFakeLLM
 from app.persistence.models import IncidentRow
 from app.persistence.store import (
+    DatabaseMemoryAdapter,
     append_event,
+    create_episodic_memory_for_run,
     finish_run,
     get_incident,
+    get_prior_run_context,
     get_run,
     mark_running,
+    record_memory_recalls,
 )
 from app.schemas.incident import IncidentCreate
 from app.tools.empty import EmptyTools
@@ -78,11 +83,17 @@ async def execute(run_id: str) -> None:
         tokens_out=result.tokens_out,
         cost_usd=result.cost_usd,
     )
+    await record_memory_recalls(run_id, result.recalled_memories)
+    if not bool((run.config or {}).get("is_eval", False)):
+        await create_episodic_memory_for_run(run_id)
 
 
 async def _investigate(run_id: str, incident_row: IncidentRow) -> InvestigationResult:
     run = await get_run(run_id)
-    scenario_id = run.config.get("scenario_id")
+    cfg = run.config or {}
+    scenario_id = cfg.get("scenario_id")
+    is_eval = bool(cfg.get("is_eval", False))
+    inherit_prior = bool(cfg.get("inherit_prior_runs", True)) and not is_eval
     tools, services = _tools(scenario_id if isinstance(scenario_id, str) else None)
     incident = IncidentCreate(
         title=incident_row.title,
@@ -95,6 +106,7 @@ async def _investigate(run_id: str, incident_row: IncidentRow) -> InvestigationR
     )
     moment = incident.detected_at or incident.occurred_at
     scenario_clock = ScenarioClock(moment) if moment is not None else None
+    prior_context = await get_prior_run_context(incident_row.id, run_id) if inherit_prior else None
 
     async def on_event(event: TraceEvent) -> None:
         await append_event(run_id, event)
@@ -105,15 +117,31 @@ async def _investigate(run_id: str, incident_row: IncidentRow) -> InvestigationR
         InvestigativeFakeLLM(),
         known_services=services,
         scenario_clock=scenario_clock,
+        memory=DatabaseMemoryAdapter(),
+        prior_context=prior_context,
+        is_eval=is_eval,
         on_event=on_event,
         cancel_event=_cancel_events.get(run_id),
     )
 
 
+def resolve_scenario_path(scenario_id: str) -> Path | None:
+    frozen_candidate = frozen_dir() / f"{scenario_id}.yaml"
+    if frozen_candidate.is_file():
+        return frozen_candidate
+    m6_candidate = frozen_dir().parent / "m6" / f"{scenario_id}.yaml"
+    if m6_candidate.is_file():
+        return m6_candidate
+    return None
+
+
 def _tools(scenario_id: str | None) -> tuple[EmptyTools | SimulatorTools, tuple[str, ...]]:
     if not scenario_id:
         return EmptyTools(), ()
-    scenario = load_scenario(frozen_dir() / f"{scenario_id}.yaml")
+    path = resolve_scenario_path(scenario_id)
+    if path is None:
+        return EmptyTools(), ()
+    scenario = load_scenario(path)
     return SimulatorTools(scenario.world), tuple(scenario.world.services)
 
 
