@@ -3,6 +3,7 @@ import json
 
 import pytest
 from app.eval import nightly
+from app.eval.runner import baselines_dir
 from app.eval.runner import main as eval_main
 from app.eval.scenario import load_frozen_scenarios
 from app.llm.port import LLMRequest, LLMResponse
@@ -159,3 +160,24 @@ def test_smoke_scenario_selection_rejects_unknown_ids_before_calls(tmp_path) -> 
             ]
         )
     assert not (tmp_path / "report.json").exists()
+
+
+def test_archived_repaired_deepseek_measurement_is_complete_and_honest() -> None:
+    path = baselines_dir().parent / "measurements" / "2026-10-30-deepseek-repaired.json"
+    data = json.loads(path.read_text(encoding="utf-8"))
+    assert data["status"] == "completed"
+    assert data["measurement"] == "live-model"
+    assert data["revision"] == "d20db86e1556c3e39c17e39594804c3c7dae2d0c"
+    assert data["requested_repeats"] == 3
+    assert data["model_settings"] == {
+        "api_host": "api.deepseek.com",
+        "temperature": 0.0,
+        "deepseek_thinking": "disabled",
+    }
+    assert data["summary"]["m3"]["status_counts"] == {"COMPLETED": 86, "FAILED": 1}
+    assert data["summary"]["m4"]["status_counts"] == {"COMPLETED": 87}
+    assert data["summary"]["m3"]["top1"] == 0.85
+    assert data["summary"]["m4"]["top1"] == 0.7333
+    assert data["headline"] == {"metric": "M4 Top-1 minus M3 Top-1", "value": -0.1167}
+    assert data["summary"]["m4"]["accepted_illegal_citation_rate"] == 0.0
+    assert data["judge"]["status"] == "completed"

@@ -1,10 +1,10 @@
 # AgentOps 工程交接文档（Handoff & Engineering Rationale）
 
-> **更新日期**：2026-10-29
-> **当前主分支状态**：M2（PR #36）与 M5 工具链（PR #37）已合并，相关 CI 通过。
-> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run、M5 离线门禁/夜间评测工具链/OTel。
-> **仍需验收**：M2 真实 PostgreSQL 迁移与进程重启链路；M5 真实模型配置与首份测量报告。M6 尚未实现。
-> **分数口径**：下文 M3/M4 的 0.85/1.00 来自 fake adapter 与冻结场景，是离线 harness 检查，不是真实模型准确率。
+> **更新日期**：2026-11-04
+> **当前主分支状态**：M2（PR #36/#38）与 M5 工具链及 DeepSeek 全量无记忆实测（PR #37/#40/#42, Run `40988173433`）已完成并归档。
+> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run（含真库与进程重启验收）、M5 离线门禁/夜间评测工具链/OTel/DeepSeek 实测归档。
+> **当前待推进**：M6（Issue `#41`：情景记忆与服务知识库及三组消融对比）。
+> **分数口径**：下文 M3/M4 的 `0.85`/`1.00` 来自离线确定性 fake adapter；真实 `deepseek-flash`（`k=3`, 29 场景）无记忆实测已归档于 `evals/measurements/2026-10-30-deepseek-repaired.json`（M3 Top-1 `0.8500`, M4 Top-1 `0.7333`, `headline = -0.1167`, M4 87/87 完成）。
 
 ---
 
@@ -16,10 +16,11 @@
 | **M0：骨架与契约** | `#6, #8, #9` | `app/main.py`、`app/schemas/incident.py`、统一错误体、GitHub Actions CI | ✅ 已合入 `main` |
 | **M1：模拟器与规则基线** | `#7, #10, #11, #12, #25, #26` / PR `#31, #32` | `app/tools/`（6 个只读工具 + 脱敏 + `<<UNTRUSTED_DATA>>`）、`scenarios/frozen/*.yaml`（29 个场景）、`app/agent/baseline.py`（Top-1 `0.65`） | ✅ 已合入 `main` |
 | **P0/P1 前置改造** | `#29, #30` / PR `#33` | 清理 29 个场景 `incident.title`/`description` 剧透词；新增 `AsyncToolPort` 与 `ThreadedToolPort` | ✅ 已合入 `main` |
-| **M3：单次 LLM 对照组** | `#13, #27` / PR `#33` (`8a2d2b8`) | `app/llm/port.py`、`OpenAIAdapter`、`FakeLLMAdapter`、`app/agent/single_shot.py`、`evals/baselines/m3-single-shot.json`（Top-1 `0.85`） | ✅ 已合入 `main` |
-| **M4：多步调查循环 + Cassette** | `#14, #28` / PR `#34` (`98eda68`) | `EvidenceLedger`、`HypothesisBoard`、`ReadOnlyVerifier`、`investigate()`、`InvestigativeFakeLLM`、`app/eval/cassette.py`、`evals/baselines/m4-agent.json`（Top-1 `1.00`）、SRE `inspect` / `replay` CLI | ✅ 已合入 `main` |
-| **M2：持久化与异步流** | Issue #15 / PR #36 | Postgres + Alembic、Incident/Run/RunEvent、幂等、SSE、CLI | 代码已合并，补充部署验收 |
-| **M5：Nightly 评测与可观测性** | Issue #16 / PR #37 | Nightly workflow、agreement@k、judge 评论、OTel | 工具链已合并，待真实测量 |
+| **M3：单次 LLM 对照组** | `#13, #27` / PR `#33` (`8a2d2b8`) | `app/llm/port.py`、`OpenAIAdapter`、`FakeLLMAdapter`、`app/agent/single_shot.py`、`evals/baselines/m3-single-shot.json`（离线 Top-1 `0.85`） | ✅ 已合入 `main` |
+| **M4：多步调查循环 + Cassette** | `#14, #28` / PR `#34` (`98eda68`) | `EvidenceLedger`、`HypothesisBoard`、`ReadOnlyVerifier`、`investigate()`、`InvestigativeFakeLLM`、`app/eval/cassette.py`、`evals/baselines/m4-agent.json`（离线 Top-1 `1.00`）、SRE `inspect` / `replay` CLI | ✅ 已合入 `main` |
+| **M2：持久化与异步流** | Issue `#15` / PR `#36, #38` | Postgres + Alembic、Incident/Run/RunEvent、幂等、SSE、CLI、进程重启真库验收 | ✅ 已合入 `main` |
+| **M5：Nightly 评测与首份实测** | Issue `#16, #39` / PR `#37, #40, #42` | Nightly workflow、`agreement@k`、Judge 评论、OTel、`evals/measurements/2026-10-30-deepseek-repaired.json` | ✅ 已完成归档 |
+| **M6：情景记忆与知识库消融** | Issue `#41` | `MemoryItem`、混合检索、信任状态流转、三组消融实验 | ⏳ 待开发 |
 
 ---
 
@@ -151,12 +152,12 @@ M2_TEST_DATABASE_URL=postgresql+asyncpg://agentops:agentops@localhost:5432/agent
 归档由 archived_at 表示，不存在 ARCHIVED 状态。部分报告、取消、
 ToolCall/Evidence 事务与引用规则还由现有单元测试覆盖。
 
-### 2. M5 首次真实测量
+### 2. M5 首次真实测量（已完成归档，Issue `#39`）
 
-PR #37 已提供离线门禁、夜间报告、agreement@k、judge 评论与 OTel。
-先明确供应商、模型、重复次数和 judge 模型，配置 Actions secret/variables，
-再手动运行 nightly-eval 并核查报告。配置方法见 README。
-保留模型、提交、冻结场景哈希和所有重复报告；不能把 fake smoke 当成实测。
+PR `#37`、`#40`、`#42` 已完成工具链与契约注入，并在 GitHub Actions Run [`40988173433`](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/40988173433)（源码 `d20db86`，`deepseek-flash`，29 场景，`k=3`，`thinking=disabled`，`temperature=0.0`）完成了完整无记忆实测，原始 JSON 已原样归档于 `evals/measurements/2026-10-30-deepseek-repaired.json`（详见 `evals/measurements/README.md`）：
+- **完成率与引用合法性**：M3 `86/87` 完成（1 次失败），M4 `87/87`（100%）完成；M3/M4 最终采纳非法引用率均为 `0.0`（M4 首次非法引用率为 `0.0230`）。
+- **核心指标**：`M3 Top-1 = 0.8500`，`M4 Top-1 = 0.7333`，Headline `M4 Top-1 - M3 Top-1 = -0.1167`；M4 严重度定级准确率 `0.8333` 高于 M3 的 `0.6333`（`+0.2000`）；`agreement@3` 分别为 `0.9770`（M3）与 `0.9425`（M4）。
+- **局限性与根因分析**：无记忆 M4 在 `drilldown-truncated-dns` 与 `dependency-with-cpu-herring` 上各追回 `1/3`（M3 均为 `0/3`），但在 3 个多跳/跨服务场景（`drilldown-payments-pool`、`multihop-checkout-payments-pool`、`multihop-checkout-pricing-dns`）上 M4 为 `0/3`（M3 因代码预先全扫所有服务拿到 `3/3`）。原因在于无记忆 M4 将 7–8 次工具调用消耗在入口服务 `checkout` 的本地指标上，停留在第一跳 `dependency_timeout`，未能优先下钻 `payments` 或 `pricing`。定时 Nightly 保持关闭（`EVAL_NIGHTLY_ENABLED=false`）。
 
 ### 3. M6 记忆消融
 
