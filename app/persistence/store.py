@@ -537,6 +537,7 @@ async def cancel_run(run_id: str) -> RunRow:
 
 async def fail_runs_after_restart() -> int:
     """Mark leftover active runs failed. A dead process will not resume them."""
+    from app.executor import service as executor
 
     await ensure_ready()
     now = WallClock().now()
@@ -549,6 +550,7 @@ async def fail_runs_after_restart() -> int:
                 )
             )
             for run in rows:
+                executor.cancel_task(run.id)
                 run.status = "FAILED"
                 run.failure_reason = "restart"
                 run.ended_at = now
@@ -1114,55 +1116,70 @@ async def record_action_approval(
     normalized = decision.strip().upper()
     if normalized not in {"APPROVED", "REJECTED"}:
         raise StoreError(422, "decision must be 'approved' or 'rejected'.")
-    now = WallClock().now()
     factory = get_sessionmaker()
-    async with factory() as session:
-        async with session.begin():
-            run = await session.get(RunRow, run_id)
-            if run is None:
-                raise StoreError(404, "Run not found.")
-            row = await session.scalar(
-                select(ActionApprovalRow).where(
-                    ActionApprovalRow.run_id == run_id,
-                    ActionApprovalRow.action_index == action_index,
-                )
-            )
-            if row is None:
-                raise StoreError(404, f"Action approval index {action_index} not found.")
-            row.status = normalized
-            row.actor = actor
-            row.notes = notes
-            row.updated_at = now
+    for attempt in range(3):
+        now = WallClock().now()
+        try:
+            async with factory() as session:
+                async with session.begin():
+                    run = await session.scalar(
+                        select(RunRow).where(RunRow.id == run_id).with_for_update()
+                    )
+                    if run is None:
+                        raise StoreError(404, "Run not found.")
+                    # Touch updated state on parent run row to serialize sequence allocation
+                    run.config = dict(run.config or {})
+                    row = await session.scalar(
+                        select(ActionApprovalRow)
+                        .where(
+                            ActionApprovalRow.run_id == run_id,
+                            ActionApprovalRow.action_index == action_index,
+                        )
+                        .with_for_update()
+                    )
+                    if row is None:
+                        raise StoreError(404, f"Action approval index {action_index} not found.")
+                    row.status = normalized
+                    row.actor = actor
+                    row.notes = notes
+                    row.updated_at = now
 
-            last = await session.scalar(
-                select(func.max(RunEventRow.seq)).where(RunEventRow.run_id == run_id)
-            )
-            event_type = (
-                "RECOMMENDATION_APPROVED" if normalized == "APPROVED" else "RECOMMENDATION_REJECTED"
-            )
-            summary = (
-                f"Recommendation #{action_index} {normalized.lower()}: {row.action_text[:120]}"
-            )
-            session.add(
-                RunEventRow(
-                    id=str(uuid4()),
-                    run_id=run_id,
-                    seq=0 if last is None else int(last) + 1,
-                    type=event_type,
-                    payload={
-                        "summary": summary,
-                        "action_index": action_index,
-                        "action": row.action_text,
-                        "risk": row.risk,
-                        "status": normalized,
-                        "actor": actor,
-                        "notes": notes,
-                    },
-                    created_at=now,
-                )
-            )
-            await session.flush()
-            return _approval_dict(row)
+                    last = await session.scalar(
+                        select(func.max(RunEventRow.seq)).where(RunEventRow.run_id == run_id)
+                    )
+                    event_type = (
+                        "RECOMMENDATION_APPROVED"
+                        if normalized == "APPROVED"
+                        else "RECOMMENDATION_REJECTED"
+                    )
+                    summary = (
+                        f"Recommendation #{action_index} {normalized.lower()}: "
+                        f"{row.action_text[:120]}"
+                    )
+                    session.add(
+                        RunEventRow(
+                            id=str(uuid4()),
+                            run_id=run_id,
+                            seq=0 if last is None else int(last) + 1,
+                            type=event_type,
+                            payload={
+                                "summary": summary,
+                                "action_index": action_index,
+                                "action": row.action_text,
+                                "risk": row.risk,
+                                "status": normalized,
+                                "actor": actor,
+                                "notes": notes,
+                            },
+                            created_at=now,
+                        )
+                    )
+                    await session.flush()
+                    return _approval_dict(row)
+        except IntegrityError:
+            if attempt == 2:
+                raise
+    raise StoreError(409, "Could not record action approval due to concurrent conflict.")
 
 
 async def save_run_checkpoint(
@@ -1245,8 +1262,14 @@ async def prepare_run_checkpoint_resume(run_id: str) -> tuple[RunRow, RunCheckpo
                     "set checkpoint_policy='resume' to replace M2 restart-fail with "
                     "checkpoint recovery.",
                 )
-            if run.status in {"COMPLETED", "CANCELLED", "TIMED_OUT", "BUDGET_EXCEEDED"}:
-                raise StoreError(409, f"Run in terminal status {run.status} cannot be resumed.")
+            if run.status in {"PENDING", "RUNNING"}:
+                raise StoreError(409, "Run is already active.")
+            if run.status != "FAILED" or run.failure_reason != "restart":
+                raise StoreError(
+                    409,
+                    f"Run in status {run.status} (reason={run.failure_reason!r}) "
+                    "cannot be resumed; only runs interrupted by restart can be resumed.",
+                )
             checkpoint = await session.scalar(
                 select(RunCheckpointRow)
                 .where(RunCheckpointRow.run_id == run_id)

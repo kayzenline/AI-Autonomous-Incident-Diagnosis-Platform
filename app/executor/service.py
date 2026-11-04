@@ -35,10 +35,15 @@ _tasks: dict[str, asyncio.Task[None]] = {}
 _cancel_events: dict[str, asyncio.Event] = {}
 
 
+def cancel_task(run_id: str) -> None:
+    _tasks.pop(run_id, None)
+    event = _cancel_events.pop(run_id, None)
+    if event is not None:
+        event.set()
+
+
 def schedule(run_id: str, *, resume_checkpoint: dict[str, Any] | None = None) -> None:
-    previous = _tasks.pop(run_id, None)
-    if previous is not None and not previous.done():
-        previous.cancel()
+    cancel_task(run_id)
     _cancel_events[run_id] = asyncio.Event()
     task = asyncio.create_task(
         execute(run_id, resume_checkpoint=resume_checkpoint),
@@ -74,14 +79,16 @@ async def execute(
     while pause_runs:
         if _tasks.get(run_id) is not current_task:
             return
-        current = await get_run(run_id)
-        if current.status not in {"PENDING", "RUNNING"}:
+        cancel_ev = _cancel_events.get(run_id)
+        if cancel_ev is not None and cancel_ev.is_set():
             return
         await asyncio.sleep(0.01)
     if _tasks.get(run_id) is not current_task:
         return
     try:
         run = await get_run(run_id)
+        if run.status not in {"PENDING", "RUNNING"}:
+            return
         incident = await get_incident(run.incident_id)
         result = await _investigate(run_id, incident, resume_checkpoint=resume_checkpoint)
         if _tasks.get(run_id) is not current_task:
