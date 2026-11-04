@@ -18,6 +18,7 @@ from typing import Any
 
 from app.agent.baseline import diagnose
 from app.agent.investigator import InvestigationResult, investigate
+from app.agent.langgraph_investigator import investigate_with_langgraph
 from app.agent.single_shot import SingleShotResult, diagnose_single_shot
 from app.eval.cassette import (
     load_cassette,
@@ -30,6 +31,11 @@ from app.eval.m6_ablation import (
     check_m6_baselines,
     run_m6_ablation,
     write_m6_baselines,
+)
+from app.eval.m7_langgraph import (
+    build_m7_report,
+    check_m7_baselines,
+    write_m7_baselines,
 )
 from app.eval.scenario import Scenario, frozen_dir, load_frozen_scenarios
 from app.eval.score import cited_keys, evidence_precision, evidence_recall, top_hit
@@ -244,6 +250,7 @@ def write_baselines() -> None:
     _dump(directory / MANIFEST_NAME, build_manifest())
     save_cassette(record_m4_cassette())
     write_m6_baselines(directory)
+    write_m7_baselines(directory, m4_report)
 
 
 def check_baselines() -> None:
@@ -259,6 +266,7 @@ def check_baselines() -> None:
     _expect(directory / MANIFEST_NAME, build_manifest())
     replay_m4_cassette(load_cassette())
     check_m6_baselines(directory)
+    check_m7_baselines(directory, m4_report)
 
 
 def format_inspection(scenario: Scenario, mode: str = "m4", *, as_json: bool = False) -> str:
@@ -296,8 +304,9 @@ def format_inspection(scenario: Scenario, mode: str = "m4", *, as_json: bool = F
         }
         return json.dumps(payload, indent=2)
 
+    runner_fn = investigate_with_langgraph if mode == "m7" else investigate
     m4_res = asyncio.run(
-        investigate(
+        runner_fn(
             scenario.incident,
             tools,
             InvestigativeFakeLLM(),
@@ -308,7 +317,7 @@ def format_inspection(scenario: Scenario, mode: str = "m4", *, as_json: bool = F
         return json.dumps(m4_res.model_dump(mode="json"), indent=2)
 
     lines: list[str] = [
-        f"=== SRE Incident Investigation Trace: {scenario.id} (mode=m4) ===",
+        f"=== SRE Incident Investigation Trace: {scenario.id} (mode={mode}) ===",
         f"Incident Title : {scenario.incident.title}",
         (
             f"Service        : {m4_res.resolved_service} "
@@ -364,9 +373,13 @@ def main(argv: list[str] | None = None) -> int:
     m6_parser.add_argument("--repeats", type=int, default=1)
     m6_parser.add_argument("--output", type=Path, default=None)
 
+    m7_parser = subparsers.add_parser("run-m7")
+    m7_parser.add_argument("--provider", choices=("fake", "openai"), default="fake")
+    m7_parser.add_argument("--output", type=Path, default=None)
+
     inspect_parser = subparsers.add_parser("inspect")
     inspect_parser.add_argument("scenario_id")
-    inspect_parser.add_argument("--mode", choices=("m1", "m3", "m4"), default="m4")
+    inspect_parser.add_argument("--mode", choices=("m1", "m3", "m4", "m7"), default="m7")
     inspect_parser.add_argument("--json", action="store_true")
 
     compare = subparsers.add_parser("compare")
@@ -414,6 +427,14 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "run-m6-ablation":
         factory = OpenAIAdapter if args.provider == "openai" else InvestigativeFakeLLM
         report = run_m6_ablation(llm_factory=factory, repeats=max(1, int(args.repeats)))
+        if args.output is not None:
+            _dump(args.output, report)
+        else:
+            print(json.dumps(report, indent=2))
+        return 0
+    if args.command == "run-m7":
+        llm_m7: LLMPort = OpenAIAdapter() if args.provider == "openai" else InvestigativeFakeLLM()
+        report = build_m7_report(llm=llm_m7)
         if args.output is not None:
             _dump(args.output, report)
         else:

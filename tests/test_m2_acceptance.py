@@ -173,10 +173,22 @@ def test_migrated_database_cli_sse_and_process_restart(tmp_path: Path) -> None:
         finished = wait_finished(client, run_id)
         assert finished["status"] == "COMPLETED"
         assert finished["final_report"]["hypotheses"][0]["cause"] == "cpu_saturation"
+
+        approvals = client.get(f"/v1/runs/{run_id}/approvals")
+        assert approvals.status_code == 200
+        assert len(approvals.json()["approvals"]) >= 1
+        approved = client.post(
+            f"/v1/runs/{run_id}/approve",
+            json={"action_index": 0, "decision": "approved", "actor": "acceptance-sre"},
+        )
+        assert approved.status_code == 200
+        assert approved.json()["status"] == "APPROVED"
+
         events = client.get(f"/v1/runs/{run_id}/events")
         assert events.status_code == 200
         assert "id: 0\n" in events.text
         assert "FINAL_REPORT" in events.text
+        assert "RECOMMENDATION_APPROVED" in events.text
         asyncio.run(assert_evidence_links(run_id))
 
         feedback = client.post(

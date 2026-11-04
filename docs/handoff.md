@@ -1,9 +1,9 @@
 # AgentOps 工程交接文档（Handoff & Engineering Rationale）
 
 > **更新日期**：2026-11-04
-> **当前主分支状态**：M0–M6 已全部完成并合入 `main`。M2（PR #36/#38）、M5 工具链及 DeepSeek 全量无记忆实测（PR #37/#40/#42/#43, Run `40988173433`）、M6 经证据校验的情景记忆与服务知识库及三组消融对比（Issue `#41`）均已落地。
-> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run（含真库与进程重启验收）、M5 离线门禁/夜间评测工具链/OTel/DeepSeek 实测归档、M6 双层记忆（`MemoryItem` / `MemoryRecall` / `Feedback` / `Hypothesis` 持久化、混合向量+BM25 检索、`search_memory`、仅按引用流转的信任机、跨 Run 继承及 `m6-v1` 三组消融基准）。
-> **当前待推进**：M7（动态预算与长尾场景扩展）或 M8（生产只读适配器 Prometheus/Loki/K8s）。
+> **当前主分支状态**：M0–M7 已全部完成并合入 `main`。M2（PR #36/#38）、M5 工具链及 DeepSeek 全量无记忆实测（PR #37/#40/#42/#43, Run `40988173433`）、M6 经证据校验的情景记忆与服务知识库及三组消融对比（Issue `#41`, PR `#44/#45`）、Prompt 下钻调优与 `--include-m6` 评测支持（Issue `#46`, PR `#48`）、以及 M7 LangGraph 编排迁移 + Checkpoint 恢复对照实验 + HITL 建议审批（Issue `#47`）均已落地。
+> **已合入能力**：M0/M1、M3/M4、M2 持久化与异步 Run（含真库与进程重启验收）、M5 离线门禁/夜间评测工具链/OTel/DeepSeek 实测归档、M6 双层记忆（`MemoryItem` / `MemoryRecall` / `Feedback` / `Hypothesis` 持久化、混合向量+BM25 检索、`search_memory`、仅按引用流转的信任机、跨 Run 继承及 `m6-v1` 三组消融基准）、M7 LangGraph `StateGraph` 编排器（`app/agent/langgraph_investigator.py`、`run_checkpoints`、`action_approvals`、`/v1/runs/{id}/resume`、`/v1/runs/{id}/approvals`、`/v1/runs/{id}/approve` 及 `m7-vs-m4.json` 零退化与恢复对照基准）。
+> **当前待推进**：M8（MCP 工具标准化暴露与直连延迟对比，可选 Prometheus 适配器）或 M9（可选多 Agent / 反馈转基准消融报告）。
 > **分数口径**：下文 M3/M4 的 `0.85`/`1.00` 及 M6 的 `0.3333 -> 0.6667 -> 1.0000` 来自离线确定性 fake adapter；真实 `deepseek-flash`（`k=3`, 29 场景）无记忆实测已归档于 `evals/measurements/2026-10-30-deepseek-repaired.json`（M3 Top-1 `0.8500`, M4 Top-1 `0.7333`, `headline = -0.1167`, M4 87/87 完成）。`m6-v1` 独立版本集分数严禁与 `frozen-v1`（29 场景）发布的 M3/M4 分数直接相减。
 
 ---
@@ -19,8 +19,9 @@
 | **M3：单次 LLM 对照组** | `#13, #27` / PR `#33` (`8a2d2b8`) | `app/llm/port.py`、`OpenAIAdapter`、`FakeLLMAdapter`、`app/agent/single_shot.py`、`evals/baselines/m3-single-shot.json`（离线 Top-1 `0.85`） | ✅ 已合入 `main` |
 | **M4：多步调查循环 + Cassette** | `#14, #28` / PR `#34` (`98eda68`) | `EvidenceLedger`、`HypothesisBoard`、`ReadOnlyVerifier`、`investigate()`、`InvestigativeFakeLLM`、`app/eval/cassette.py`、`evals/baselines/m4-agent.json`（离线 Top-1 `1.00`）、SRE `inspect` / `replay` CLI | ✅ 已合入 `main` |
 | **M2：持久化与异步流** | Issue `#15` / PR `#36, #38` | Postgres + Alembic、Incident/Run/RunEvent、幂等、SSE、CLI、进程重启真库验收 | ✅ 已合入 `main` |
-| **M5：Nightly 评测与首份实测** | Issue `#16, #39` / PR `#37, #40, #42, #43` | Nightly workflow、`agreement@k`、Judge 评论、OTel、`evals/measurements/2026-10-30-deepseek-repaired.json` | ✅ 已合入 `main` |
-| **M6：情景记忆与知识库消融** | Issue `#41` | `app/memory/`、Alembic `0002_m6`、混合检索、信任状态流转、跨 Run 继承、`scenarios/m6/*.yaml`、`evals/baselines/m6-ablation.json` | ✅ 已合入 `main` |
+| **M5：Nightly 评测与首份实测** | Issue `#16, #39` / PR `#37, #40, #42, #43, #48` | Nightly workflow（支持 `--include-m6`）、`agreement@k`、Judge 评论、OTel、`evals/measurements/2026-10-30-deepseek-repaired.json` | ✅ 已合入 `main` |
+| **M6：情景记忆与知识库消融** | Issue `#41` / PR `#44, #45` | `app/memory/`、Alembic `0002_m6`、混合检索、显式 `cited_memory_ids` 信任状态流转、跨 Run 继承、`scenarios/m6/*.yaml`、`evals/baselines/m6-ablation.json` | ✅ 已合入 `main` |
+| **M7：LangGraph + Checkpoint + HITL** | Issue `#47` | `app/agent/langgraph_investigator.py`、Alembic `0003_m7`（`run_checkpoints`、`action_approvals`）、`evals/baselines/m7-langgraph.json`、`evals/baselines/m7-vs-m4.json`、`/v1/runs/{id}/resume`、`/v1/runs/{id}/approvals`、`/v1/runs/{id}/approve` | ✅ 已合入 `main` |
 
 ---
 
@@ -188,3 +189,17 @@ PR `#37`、`#40`、`#42` 已完成工具链与契约注入，并在 GitHub Actio
      - `episodic_plus_semantic`：Top-1 = `1.0000`（6/6，`+0.3333` vs `episodic`，`+0.6667` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
    - 因 `episodic` 与 `semantic` 两层均取得显著正向 Top-1 收益，`layer_gating` 判定两层均默认启用（若任一层收益 `<= 0` 则自动默认禁用）。
    - **口径约束**：`m6-v1` 仅在与同数据集的 `no_memory` 基线对照时衡量记忆层净收益，严禁与 `frozen-v1`（29 场景）上的 M3/M4 历史基线直接相减。
+
+### 4. M7 LangGraph 编排器迁移、Checkpoint 恢复对照实验与 HITL 审批（已完成，Issue `#47`）
+
+遵循 `docs/requirements.md` §4.4、§4.5 与 §6 M7，我们将调查循环迁移至显式 LangGraph `StateGraph` 并在同一数据模型上落地了步骤级 Checkpoint 与人工审批闭环：
+
+1. **LangGraph `StateGraph` 编排器与零退化验收（`app/agent/langgraph_investigator.py`）**：
+   - 节点拓扑：`triage -> recall -> investigate_step <-> tool_dispatch -> verify -> finalize`，完整复用 `EvidenceLedger`、`HypothesisBoard` 与物理隔离的 `ReadOnlyVerifier`（`verifier_tool_calls == 0`）。
+   - 在 29 个 `frozen-v1` 场景上生成 `evals/baselines/m7-langgraph.json` 与 `evals/baselines/m7-vs-m4.json`，验证 `Top-1 = 1.0000`、`top1_delta = 0.0`、`evidence_recall_delta = 0.0`、`evidence_precision_delta = 0.0`、`changed_cases = []`（`zero_regression = true`）。
+2. **M2 重启失败策略 vs. M7 Checkpoint 续跑对照实验（`alembic/versions/0003_m7_checkpoints_and_approvals.py`）**：
+   - 默认保持 M2 的 `checkpoint_policy="fail"`（进程重启后残留 `PENDING/RUNNING` 自动标为 `FAILED(restart)`，且调用 `POST /v1/runs/{run_id}/resume` 返回 `409 Conflict`）。
+   - 当 Run 显式配置 `checkpoint_policy="resume"` 时，明确声明以 M7 Checkpoint 续跑策略取代 M2 的重启标败规则：每步 `tool_dispatch` 后将 `EvidenceLedger`、`HypothesisBoard`、对话消息与预算计数写入 `run_checkpoints` 表；中断后调用 `POST /v1/runs/{run_id}/resume` 直接从最新 `step_index` 恢复并写入 `CHECKPOINT_RESUMED` 事件，**已完成的工具调用重执行次数为 `0`**（对照实验归档于 `evals/baselines/m7-vs-m4.json` 的 `checkpoint_recovery_experiment`）。
+3. **Human-in-the-Loop (HITL) 建议动作审批（`action_approvals` 表）**：
+   - Run 产出 `final_report` 时自动将 `recommendations` 写入 `action_approvals`（默认 `requires_approval=True` 时状态为 `PENDING`）。
+   - 提供 `GET /v1/runs/{run_id}/approvals` 查询审批列表与 `POST /v1/runs/{run_id}/approve`（支持 `approved` / `rejected`、`actor`、`notes`），并将 `RECOMMENDATION_APPROVED` / `RECOMMENDATION_REJECTED` 写入 `RunEvent` 审计时间线。

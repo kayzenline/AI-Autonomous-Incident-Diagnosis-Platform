@@ -1,0 +1,159 @@
+{
+  "left": "m4",
+  "right": "m7",
+  "left_top1": 1.0,
+  "right_top1": 1.0,
+  "top1_delta": 0.0,
+  "left_top3": 1.0,
+  "right_top3": 1.0,
+  "top3_delta": 0.0,
+  "evidence_recall_delta": 0.0,
+  "evidence_precision_delta": 0.0,
+  "changed_cases": [],
+  "zero_regression": true,
+  "checkpoint_recovery_experiment": {
+    "policy_statement": "M2's default restart policy (`RUNNING -> FAILED(restart)`, `checkpoint_policy='fail'`) remains active by default. M7's `checkpoint_policy='resume'` explicitly replaces M2's restart-fail rule for opted-in runs so an interrupted run resumes from its latest `run_checkpoints` row without re-executing completed tool calls (\u00a74.4, \u00a76 M7).",
+    "scenario_count": 5,
+    "interrupt_after_tool_calls": 1,
+    "control_m2_restart_fail": {
+      "interrupted_run_completion_rate": 0.0,
+      "avg_reexecuted_tool_calls_on_manual_rerun": 1.0,
+      "avg_total_tool_executions_to_complete": 8.0,
+      "cases": [
+        {
+          "scenario_id": "cpu-saturation-checkout",
+          "policy": "m2_restart_fail",
+          "interrupted_run_status": "FAILED",
+          "interrupted_failure_reason": "restart",
+          "interrupted_run_completed": false,
+          "tool_calls_before_interruption": 1,
+          "manual_rerun_tool_calls": 8,
+          "total_tool_executions_to_complete": 9,
+          "reexecuted_tool_calls": 1
+        },
+        {
+          "scenario_id": "db-pool-with-cpu-herring",
+          "policy": "m2_restart_fail",
+          "interrupted_run_status": "FAILED",
+          "interrupted_failure_reason": "restart",
+          "interrupted_run_completed": false,
+          "tool_calls_before_interruption": 1,
+          "manual_rerun_tool_calls": 8,
+          "total_tool_executions_to_complete": 9,
+          "reexecuted_tool_calls": 1
+        },
+        {
+          "scenario_id": "drilldown-payments-pool",
+          "policy": "m2_restart_fail",
+          "interrupted_run_status": "FAILED",
+          "interrupted_failure_reason": "restart",
+          "interrupted_run_completed": false,
+          "tool_calls_before_interruption": 1,
+          "manual_rerun_tool_calls": 8,
+          "total_tool_executions_to_complete": 9,
+          "reexecuted_tool_calls": 1
+        },
+        {
+          "scenario_id": "drilldown-truncated-dns",
+          "policy": "m2_restart_fail",
+          "interrupted_run_status": "FAILED",
+          "interrupted_failure_reason": "restart",
+          "interrupted_run_completed": false,
+          "tool_calls_before_interruption": 1,
+          "manual_rerun_tool_calls": 3,
+          "total_tool_executions_to_complete": 4,
+          "reexecuted_tool_calls": 1
+        },
+        {
+          "scenario_id": "multihop-checkout-payments-pool",
+          "policy": "m2_restart_fail",
+          "interrupted_run_status": "FAILED",
+          "interrupted_failure_reason": "restart",
+          "interrupted_run_completed": false,
+          "tool_calls_before_interruption": 1,
+          "manual_rerun_tool_calls": 8,
+          "total_tool_executions_to_complete": 9,
+          "reexecuted_tool_calls": 1
+        }
+      ]
+    },
+    "treatment_m7_checkpoint_resume": {
+      "resumed_run_completion_rate": 1.0,
+      "resumed_top1": 1.0,
+      "avg_reexecuted_tool_calls": 0.0,
+      "avg_total_tool_executions_to_complete": 7.0,
+      "cases": [
+        {
+          "scenario_id": "cpu-saturation-checkout",
+          "policy": "m7_checkpoint_resume",
+          "resumed_from_step": 1,
+          "status": "COMPLETED",
+          "verdict_hit": true,
+          "top1_hit": true,
+          "evidence_recall": 1.0,
+          "evidence_precision": 1.0,
+          "tool_calls_before_interruption": 1,
+          "tool_calls_after_resume": 7,
+          "total_tool_executions_to_complete": 8,
+          "reexecuted_tool_calls": 0
+        },
+        {
+          "scenario_id": "db-pool-with-cpu-herring",
+          "policy": "m7_checkpoint_resume",
+          "resumed_from_step": 1,
+          "status": "COMPLETED",
+          "verdict_hit": true,
+          "top1_hit": true,
+          "evidence_recall": 1.0,
+          "evidence_precision": 1.0,
+          "tool_calls_before_interruption": 1,
+          "tool_calls_after_resume": 7,
+          "total_tool_executions_to_complete": 8,
+          "reexecuted_tool_calls": 0
+        },
+        {
+          "scenario_id": "drilldown-payments-pool",
+          "policy": "m7_checkpoint_resume",
+          "resumed_from_step": 1,
+          "status": "COMPLETED",
+          "verdict_hit": true,
+          "top1_hit": true,
+          "evidence_recall": 1.0,
+          "evidence_precision": 1.0,
+          "tool_calls_before_interruption": 1,
+          "tool_calls_after_resume": 7,
+          "total_tool_executions_to_complete": 8,
+          "reexecuted_tool_calls": 0
+        },
+        {
+          "scenario_id": "drilldown-truncated-dns",
+          "policy": "m7_checkpoint_resume",
+          "resumed_from_step": 1,
+          "status": "COMPLETED",
+          "verdict_hit": true,
+          "top1_hit": true,
+          "evidence_recall": 1.0,
+          "evidence_precision": 1.0,
+          "tool_calls_before_interruption": 1,
+          "tool_calls_after_resume": 2,
+          "total_tool_executions_to_complete": 3,
+          "reexecuted_tool_calls": 0
+        },
+        {
+          "scenario_id": "multihop-checkout-payments-pool",
+          "policy": "m7_checkpoint_resume",
+          "resumed_from_step": 1,
+          "status": "COMPLETED",
+          "verdict_hit": true,
+          "top1_hit": true,
+          "evidence_recall": 1.0,
+          "evidence_precision": 1.0,
+          "tool_calls_before_interruption": 1,
+          "tool_calls_after_resume": 7,
+          "total_tool_executions_to_complete": 8,
+          "reexecuted_tool_calls": 0
+        }
+      ]
+    }
+  }
+}

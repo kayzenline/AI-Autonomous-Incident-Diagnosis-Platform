@@ -26,6 +26,10 @@ class TraceEventType(StrEnum):
     EVIDENCE_ADDED = "EVIDENCE_ADDED"
     HYPOTHESIS_UPDATED = "HYPOTHESIS_UPDATED"
     GUARDRAIL_TRIGGERED = "GUARDRAIL_TRIGGERED"
+    CHECKPOINT_SAVED = "CHECKPOINT_SAVED"
+    CHECKPOINT_RESUMED = "CHECKPOINT_RESUMED"
+    RECOMMENDATION_APPROVED = "RECOMMENDATION_APPROVED"
+    RECOMMENDATION_REJECTED = "RECOMMENDATION_REJECTED"
     FINAL_REPORT = "FINAL_REPORT"
     ERROR = "ERROR"
 
@@ -140,6 +144,25 @@ class EvidenceLedger:
                 added.append(item)
         return added
 
+    def to_checkpoint(self) -> dict[str, Any]:
+        return {
+            "evidence": [item.model_dump(mode="json") for item in self._evidence.values()],
+            "tool_calls": [entry.model_dump(mode="json") for entry in self._tool_calls],
+        }
+
+    @classmethod
+    def from_checkpoint(cls, data: dict[str, Any]) -> "EvidenceLedger":
+        ledger = cls()
+        for raw_item in data.get("evidence") or []:
+            item = EvidenceItem.model_validate(raw_item)
+            ledger._evidence[item.evidence_key] = item
+        for raw_call in data.get("tool_calls") or []:
+            entry = ToolCallEntry.model_validate(raw_call)
+            ledger._tool_calls.append(entry)
+            signature = _call_signature(entry.tool, entry.arguments)
+            ledger._call_cache[signature] = entry.result
+        return ledger
+
 
 class HypothesisBoard:
     """Tracks candidate root-cause hypotheses and their lifecycle during a run."""
@@ -205,6 +228,21 @@ class HypothesisBoard:
             )
         )
         return active
+
+    def to_checkpoint(self) -> list[dict[str, Any]]:
+        return [rec.model_dump(mode="json") for rec in self._records.values()]
+
+    @classmethod
+    def from_checkpoint(
+        cls,
+        records: list[dict[str, Any]],
+        initial_rejected: set[Cause] | None = None,
+    ) -> "HypothesisBoard":
+        board = cls(initial_rejected=initial_rejected)
+        for raw in records:
+            rec = HypothesisRecord.model_validate(raw)
+            board._records[rec.cause] = rec
+        return board
 
 
 def _call_signature(tool: str, arguments: dict[str, Any]) -> str:
