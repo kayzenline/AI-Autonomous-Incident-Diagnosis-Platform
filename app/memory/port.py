@@ -39,8 +39,20 @@ class InMemoryCatalog:
         config: MemoryConfig | None = None,
     ) -> None:
         self._config = config or MemoryConfig()
-        self._items: dict[str, MemoryItem] = {item.id: item for item in (items or ())}
+        self._items: dict[str, MemoryItem] = {}
+        self._produced_by_run: dict[str, list[str]] = {}
         self._recalls_by_run: dict[str, list[MemoryRecallRecord]] = {}
+        for item in items or ():
+            self._items[item.id] = item
+            if item.source_run_id:
+                self._record_produced(item.source_run_id, item.id)
+
+    def _record_produced(self, run_id: str | None, memory_id: str) -> None:
+        if not run_id:
+            return
+        ids = self._produced_by_run.setdefault(run_id, [])
+        if memory_id not in ids:
+            ids.append(memory_id)
 
     @property
     def config(self) -> MemoryConfig:
@@ -93,6 +105,7 @@ class InMemoryCatalog:
                         }
                     )
                     self._items[existing.id] = updated
+                    self._record_produced(body.source_run_id, existing.id)
                     return updated, False
 
         item = MemoryItem(
@@ -117,6 +130,7 @@ class InMemoryCatalog:
             created_at=now,
         )
         self._items[item.id] = item
+        self._record_produced(body.source_run_id, item.id)
         return item, True
 
     def record_recalls(self, run_id: str, recalls: Sequence[MemoryRecallRecord]) -> None:
@@ -152,6 +166,24 @@ class InMemoryCatalog:
                 rejected.append(item.id)
             else:
                 unchanged.append(item.id)
+
+        for mid in self._produced_by_run.get(run_id, []):
+            if mid in promoted or mid in rejected:
+                continue
+            item = self._items.get(mid)
+            if item is None:
+                continue
+            if verdict == FeedbackVerdict.CORRECT:
+                self._items[item.id] = item.model_copy(
+                    update={
+                        "trust_level": TrustLevel.CONFIRMED,
+                        "helpful_count": item.helpful_count + 1,
+                    }
+                )
+                promoted.append(item.id)
+            elif verdict == FeedbackVerdict.INCORRECT:
+                self._items[item.id] = item.model_copy(update={"trust_level": TrustLevel.REJECTED})
+                rejected.append(item.id)
 
         return {
             "promoted_memory_ids": promoted,

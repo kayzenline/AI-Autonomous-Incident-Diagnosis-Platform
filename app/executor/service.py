@@ -17,13 +17,11 @@ from app.persistence.models import IncidentRow
 from app.persistence.store import (
     DatabaseMemoryAdapter,
     append_event,
-    create_episodic_memory_for_run,
     finish_run,
     get_incident,
     get_prior_run_context,
     get_run,
     mark_running,
-    record_memory_recalls,
 )
 from app.schemas.incident import IncidentCreate
 from app.tools.empty import EmptyTools
@@ -67,25 +65,24 @@ async def execute(run_id: str) -> None:
         run = await get_run(run_id)
         incident = await get_incident(run.incident_id)
         result = await _investigate(run_id, incident)
+        status, report, reason = _outcome(result)
+        await finish_run(
+            run_id,
+            status,
+            report,
+            reason,
+            tokens_in=result.tokens_in,
+            tokens_out=result.tokens_out,
+            cost_usd=result.cost_usd,
+            recalled_memories=result.recalled_memories,
+            create_episodic_memory=not bool((run.config or {}).get("is_eval", False)),
+        )
     except asyncio.CancelledError:
         await finish_run(run_id, "CANCELLED", None, "cancelled")
         raise
     except Exception:
         await finish_run(run_id, "FAILED", None, "executor_error")
         return
-    status, report, reason = _outcome(result)
-    await finish_run(
-        run_id,
-        status,
-        report,
-        reason,
-        tokens_in=result.tokens_in,
-        tokens_out=result.tokens_out,
-        cost_usd=result.cost_usd,
-    )
-    await record_memory_recalls(run_id, result.recalled_memories)
-    if not bool((run.config or {}).get("is_eval", False)):
-        await create_episodic_memory_for_run(run_id)
 
 
 async def _investigate(run_id: str, incident_row: IncidentRow) -> InvestigationResult:

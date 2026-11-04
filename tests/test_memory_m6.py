@@ -5,7 +5,11 @@ import time
 from datetime import UTC, datetime
 from pathlib import Path
 
-from app.agent.investigator import investigate
+from app.agent.investigator import (
+    INVESTIGATOR_SYSTEM_PROMPT,
+    investigate,
+    investigation_contract,
+)
 from app.core.taxonomy import Category, Cause, Verdict
 from app.eval.m6_ablation import (
     M6_ABLATION_NAME,
@@ -37,6 +41,8 @@ from app.persistence.models import (
 )
 from app.persistence.session import get_sessionmaker
 from app.persistence.store import (
+    cancel_run,
+    create_episodic_memory_for_run,
     create_incident,
     finish_run,
     get_prior_run_context,
@@ -620,8 +626,134 @@ def test_search_memory_tool_can_be_called_during_investigation() -> None:
             ev.type.value == "TOOL_RESULT" and ev.payload.get("tool") == "search_memory"
             for ev in res.events
         )
+        # Omitted cited_memory_ids must NEVER implicitly mark recalled memories as cited
+        assert res.recalled_memories
+        assert res.cited_memory_ids == ()
+        assert all(not r.cited for r in res.recalled_memories)
 
     asyncio.run(_run())
+
+
+def test_review_fixes_explicit_citations_default_ref_time_and_dedup_feedback() -> None:
+    """Regression test for PR #44 review findings:
+    1. Model contract exposes cited_memory_ids and omitted cited_memory_ids stays empty.
+    2. /v1/memory/search defaults reference_time to current clock so expired items are stale.
+    3. Deduplicated produced memories retain producing-run association for feedback."""
+    assert "cited_memory_ids" in INVESTIGATOR_SYSTEM_PROMPT
+    assert "cited_memory_ids_schema" not in investigation_contract(include_search_memory=False)
+    assert "cited_memory_ids_schema" in investigation_contract(include_search_memory=True)
+
+    with TestClient(app) as client:
+        # Expired confirmed runbook with old created_at
+        r_exp = client.post(
+            "/v1/memory",
+            headers=HEADERS,
+            json={
+                "layer": "semantic",
+                "service": "billing-svc",
+                "category": "CONFIG",
+                "trust_level": "CONFIRMED",
+                "summary": "Expired billing runbook",
+                "content": "Legacy billing runbook valid until 2025.",
+                "valid_until": "2025-01-01T00:00:00Z",
+                "created_at": "2024-06-01T00:00:00Z",
+            },
+        )
+        assert r_exp.status_code == 201
+        exp_id = r_exp.json()["item"]["id"]
+
+        s_res = client.get(
+            "/v1/memory/search",
+            params={"service": "billing-svc", "q": "billing runbook"},
+            headers=HEADERS,
+        )
+        assert s_res.status_code == 200
+        exp_item = next(it for it in s_res.json()["items"] if it["id"] == exp_id)
+        assert exp_item["stale"] is True
+        assert exp_item["version_weight"] < 1.0
+        assert exp_item["time_decay_weight"] < 1.0
+
+    async def _check_dedup_producing_run_feedback() -> None:
+        report = {
+            "verdict": "FAULT",
+            "severity": "high",
+            "hypotheses": [
+                {
+                    "cause": "db_pool_exhausted",
+                    "cause_summary": "Pool exhausted",
+                    "category": "DATABASE",
+                    "confidence": 0.92,
+                    "supporting_evidence": ["db:pool_1"],
+                    "contradicting_evidence": [],
+                }
+            ],
+            "recommendations": [],
+            "unresolved_questions": [],
+        }
+        inc1 = await create_incident(
+            IncidentCreate(
+                title="Payments pool timeout",
+                description="5xx on payments DB pool",
+                service="payments-dedup",
+            )
+        )
+        run1, _ = await start_run(inc1.id, "dedup-run-1", None, is_eval=False)
+        await mark_running(run1.id)
+        await finish_run(run1.id, "COMPLETED", report, None)
+        mem1 = await create_episodic_memory_for_run(run1.id)
+        assert mem1 is not None
+
+        # Second incident/run produces a duplicate episodic memory without recalling/citing mem1
+        inc2 = await create_incident(
+            IncidentCreate(
+                title="Payments pool timeout",
+                description="5xx on payments DB pool",
+                service="payments-dedup",
+            )
+        )
+        run2, _ = await start_run(inc2.id, "dedup-run-2", None, is_eval=False)
+        await mark_running(run2.id)
+        await finish_run(run2.id, "COMPLETED", report, None)
+        mem2 = await create_episodic_memory_for_run(run2.id)
+        assert mem2 is not None
+        assert mem2.id == mem1.id
+        assert mem2.usage_count == 2
+
+        # Feedback on run2 promotes the deduplicated memory even though source_run_id == run1.id
+        fb2 = await record_run_feedback(run2.id, FeedbackVerdict.CORRECT)
+        assert mem1.id in fb2["promoted_memory_ids"]
+        async with get_sessionmaker()() as session:
+            row = await session.get(MemoryItemRow, mem1.id)
+            assert row is not None and row.trust_level == "CONFIRMED"
+
+        # Cancelled run before finish_run must NOT create or deduplicate episodic memory
+        inc3 = await create_incident(
+            IncidentCreate(
+                title="Cancelled run test",
+                description="5xx on cancelled-svc",
+                service="cancelled-svc",
+            )
+        )
+        run3, _ = await start_run(inc3.id, "dedup-run-3", None, is_eval=False)
+        await mark_running(run3.id)
+        await cancel_run(run3.id)
+        await finish_run(
+            run3.id,
+            "COMPLETED",
+            report,
+            None,
+            create_episodic_memory=True,
+        )
+        assert await create_episodic_memory_for_run(run3.id) is None
+        async with get_sessionmaker()() as session:
+            rows3 = list(
+                await session.scalars(
+                    select(MemoryItemRow).where(MemoryItemRow.service == "cancelled-svc")
+                )
+            )
+            assert rows3 == []
+
+    asyncio.run(_check_dedup_producing_run_feedback())
 
 
 def test_m6_ablation_and_automatic_layer_disabling() -> None:

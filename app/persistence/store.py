@@ -5,6 +5,7 @@ The same idempotency key returns the row that already exists.
 """
 
 from collections.abc import Sequence
+from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
@@ -449,6 +450,8 @@ async def finish_run(
     tokens_in: int = 0,
     tokens_out: int = 0,
     cost_usd: float = 0.0,
+    recalled_memories: Sequence[MemoryRecallRecord] | None = None,
+    create_episodic_memory: bool = False,
 ) -> None:
     validate_outcome(status, report)
     await ensure_ready()
@@ -466,7 +469,17 @@ async def finish_run(
             run.tokens_in = tokens_in
             run.tokens_out = tokens_out
             run.cost_usd = cost_usd
+            if recalled_memories:
+                await _record_recalls_in_session(session, run_id, recalled_memories, now)
             incident = await session.get(IncidentRow, run.incident_id)
+            if (
+                create_episodic_memory
+                and status == "COMPLETED"
+                and isinstance(report, dict)
+                and not bool((run.config or {}).get("is_eval", False))
+                and incident is not None
+            ):
+                await _create_episodic_memory_in_session(session, run, incident, report)
             if incident is None or incident.status == "RESOLVED":
                 return
             if report is not None and status in {"COMPLETED", "TIMED_OUT", "BUDGET_EXCEEDED"}:
@@ -633,13 +646,31 @@ def _row_to_memory_item(row: MemoryItemRow) -> MemoryItem:
     )
 
 
-async def write_memory_item(
+async def _link_producing_run(
+    session: AsyncSession, source_run_id: str | None, memory_id: str
+) -> None:
+    if not source_run_id:
+        return
+    producing_run = await session.get(RunRow, source_run_id)
+    if producing_run is None:
+        return
+    cfg_dict = dict(producing_run.config or {})
+    produced_ids = [
+        str(mid)
+        for mid in (cfg_dict.get("_produced_memory_ids") or [])
+        if isinstance(mid, str) and mid
+    ]
+    if memory_id not in produced_ids:
+        produced_ids.append(memory_id)
+    cfg_dict["_produced_memory_ids"] = produced_ids
+    producing_run.config = cfg_dict
+
+
+async def _write_memory_in_session(
+    session: AsyncSession,
     body: MemoryWrite,
-    config: MemoryConfig | None = None,
+    cfg: MemoryConfig,
 ) -> tuple[MemoryItem, bool]:
-    """Redact, deduplicate, and persist a MemoryItemRow."""
-    await ensure_ready()
-    cfg = config or MemoryConfig()
     aliases: dict[str, str] = {}
     clean_summary = redact_text(body.summary, aliases)
     clean_content = redact_text(body.content, aliases)
@@ -649,60 +680,72 @@ async def write_memory_item(
     cat_val = body.category.value if body.category is not None else None
     cause_val = body.cause.value if body.cause is not None else None
 
+    candidates = list(
+        await session.scalars(
+            select(MemoryItemRow).where(
+                MemoryItemRow.service == body.service,
+                MemoryItemRow.layer == body.layer.value,
+                MemoryItemRow.category == cat_val,
+                MemoryItemRow.service_version == body.service_version,
+                MemoryItemRow.superseded_by.is_(None),
+                MemoryItemRow.trust_level != TrustLevel.REJECTED.value,
+            )
+        )
+    )
+    for existing in candidates:
+        sim = text_similarity(
+            combined,
+            f"{existing.summary} {existing.content}",
+            embedding,
+            existing.embedding,
+        )
+        if sim >= cfg.similarity_dedup_threshold:
+            existing.usage_count += 1
+            existing.last_used_at = now
+            if body.trust_level == TrustLevel.CONFIRMED:
+                existing.trust_level = TrustLevel.CONFIRMED.value
+            await _link_producing_run(session, body.source_run_id, existing.id)
+            await session.flush()
+            return _row_to_memory_item(existing), False
+
+    row = MemoryItemRow(
+        id=str(uuid4()),
+        layer=body.layer.value,
+        content=clean_content,
+        summary=clean_summary,
+        service=body.service,
+        category=cat_val,
+        cause=cause_val,
+        trust_level=body.trust_level.value,
+        source_run_id=body.source_run_id,
+        source_feedback_id=body.source_feedback_id,
+        embedding=embedding,
+        valid_from=_stamp(body.valid_from),  # type: ignore[arg-type]
+        valid_until=_stamp(body.valid_until),  # type: ignore[arg-type]
+        service_version=body.service_version,
+        usage_count=1,
+        helpful_count=0,
+        last_used_at=None,
+        superseded_by=None,
+        created_at=now,
+    )
+    session.add(row)
+    await _link_producing_run(session, body.source_run_id, row.id)
+    await session.flush()
+    return _row_to_memory_item(row), True
+
+
+async def write_memory_item(
+    body: MemoryWrite,
+    config: MemoryConfig | None = None,
+) -> tuple[MemoryItem, bool]:
+    """Redact, deduplicate, and persist a MemoryItemRow."""
+    await ensure_ready()
+    cfg = config or MemoryConfig()
     factory = get_sessionmaker()
     async with factory() as session:
         async with session.begin():
-            candidates = list(
-                await session.scalars(
-                    select(MemoryItemRow).where(
-                        MemoryItemRow.service == body.service,
-                        MemoryItemRow.layer == body.layer.value,
-                        MemoryItemRow.category == cat_val,
-                        MemoryItemRow.service_version == body.service_version,
-                        MemoryItemRow.superseded_by.is_(None),
-                        MemoryItemRow.trust_level != TrustLevel.REJECTED.value,
-                    )
-                )
-            )
-            for existing in candidates:
-                sim = text_similarity(
-                    combined,
-                    f"{existing.summary} {existing.content}",
-                    embedding,
-                    existing.embedding,
-                )
-                if sim >= cfg.similarity_dedup_threshold:
-                    existing.usage_count += 1
-                    existing.last_used_at = now
-                    if body.trust_level == TrustLevel.CONFIRMED:
-                        existing.trust_level = TrustLevel.CONFIRMED.value
-                    await session.flush()
-                    return _row_to_memory_item(existing), False
-
-            row = MemoryItemRow(
-                id=str(uuid4()),
-                layer=body.layer.value,
-                content=clean_content,
-                summary=clean_summary,
-                service=body.service,
-                category=cat_val,
-                cause=cause_val,
-                trust_level=body.trust_level.value,
-                source_run_id=body.source_run_id,
-                source_feedback_id=body.source_feedback_id,
-                embedding=embedding,
-                valid_from=_stamp(body.valid_from),  # type: ignore[arg-type]
-                valid_until=_stamp(body.valid_until),  # type: ignore[arg-type]
-                service_version=body.service_version,
-                usage_count=1,
-                helpful_count=0,
-                last_used_at=None,
-                superseded_by=None,
-                created_at=now,
-            )
-            session.add(row)
-            await session.flush()
-            return _row_to_memory_item(row), True
+            return await _write_memory_in_session(session, body, cfg)
 
 
 async def search_memory_items(
@@ -721,6 +764,41 @@ async def search_memory_items(
     return rank_memories(items, query, cfg)
 
 
+async def _record_recalls_in_session(
+    session: AsyncSession,
+    run_id: str,
+    recalls: Sequence[MemoryRecallRecord],
+    now: datetime,
+) -> None:
+    for rec in recalls:
+        item_row = await session.get(MemoryItemRow, rec.memory_id)
+        if item_row is None:
+            continue
+        item_row.usage_count += 1
+        item_row.last_used_at = now
+        existing = await session.scalar(
+            select(MemoryRecallRow).where(
+                MemoryRecallRow.run_id == run_id,
+                MemoryRecallRow.memory_id == rec.memory_id,
+            )
+        )
+        if existing is None:
+            session.add(
+                MemoryRecallRow(
+                    id=str(uuid4()),
+                    run_id=run_id,
+                    memory_id=rec.memory_id,
+                    score=rec.score,
+                    injected=rec.injected,
+                    cited=rec.cited,
+                )
+            )
+        else:
+            existing.score = max(existing.score, rec.score)
+            existing.injected = existing.injected or rec.injected
+            existing.cited = existing.cited or rec.cited
+
+
 async def record_memory_recalls(
     run_id: str,
     recalls: Sequence[MemoryRecallRecord],
@@ -732,33 +810,7 @@ async def record_memory_recalls(
     factory = get_sessionmaker()
     async with factory() as session:
         async with session.begin():
-            for rec in recalls:
-                item_row = await session.get(MemoryItemRow, rec.memory_id)
-                if item_row is None:
-                    continue
-                item_row.usage_count += 1
-                item_row.last_used_at = now
-                existing = await session.scalar(
-                    select(MemoryRecallRow).where(
-                        MemoryRecallRow.run_id == run_id,
-                        MemoryRecallRow.memory_id == rec.memory_id,
-                    )
-                )
-                if existing is None:
-                    session.add(
-                        MemoryRecallRow(
-                            id=str(uuid4()),
-                            run_id=run_id,
-                            memory_id=rec.memory_id,
-                            score=rec.score,
-                            injected=rec.injected,
-                            cited=rec.cited,
-                        )
-                    )
-                else:
-                    existing.score = max(existing.score, rec.score)
-                    existing.injected = existing.injected or rec.injected
-                    existing.cited = existing.cited or rec.cited
+            await _record_recalls_in_session(session, run_id, recalls, now)
 
 
 async def get_run_memory_recalls(run_id: str) -> list[MemoryRecallRow]:
@@ -771,38 +823,31 @@ async def get_run_memory_recalls(run_id: str) -> list[MemoryRecallRow]:
         return list(rows)
 
 
-async def create_episodic_memory_for_run(
-    run_id: str,
+async def _create_episodic_memory_in_session(
+    session: AsyncSession,
+    run: RunRow,
+    incident: IncidentRow,
+    report: dict[str, Any],
     config: MemoryConfig | None = None,
 ) -> MemoryItem | None:
-    """Create a CANDIDATE episodic MemoryItem when a non-evaluation run completes."""
-    await ensure_ready()
-    factory = get_sessionmaker()
-    async with factory() as session:
-        run = await session.get(RunRow, run_id)
-        if run is None or run.status != "COMPLETED" or not isinstance(run.final_report, dict):
-            return None
-        if bool((run.config or {}).get("is_eval", False)):
-            return None
-        incident = await session.get(IncidentRow, run.incident_id)
-        if incident is None or not incident.service:
-            return None
-        verdict = run.final_report.get("verdict")
-        hyps = run.final_report.get("hypotheses") or []
-        if verdict != "FAULT" or not hyps or not isinstance(hyps[0], dict):
-            return None
-        top = hyps[0]
-        try:
-            cause = Cause(str(top.get("cause") or ""))
-            category = Category(str(top.get("category") or CAUSE_CATEGORY[cause].value))
-        except ValueError:
-            return None
-        ev_keys = [str(k) for k in top.get("supporting_evidence", []) if isinstance(k, str)]
-        svc_version = None
-        if isinstance(incident.details, dict) and isinstance(
-            incident.details.get("service_version"), str
-        ):
-            svc_version = str(incident.details["service_version"])
+    if not incident.service:
+        return None
+    verdict = report.get("verdict")
+    hyps = report.get("hypotheses") or []
+    if verdict != "FAULT" or not hyps or not isinstance(hyps[0], dict):
+        return None
+    top = hyps[0]
+    try:
+        cause = Cause(str(top.get("cause") or ""))
+        category = Category(str(top.get("category") or CAUSE_CATEGORY[cause].value))
+    except ValueError:
+        return None
+    ev_keys = [str(k) for k in top.get("supporting_evidence", []) if isinstance(k, str)]
+    svc_version = None
+    if isinstance(incident.details, dict) and isinstance(
+        incident.details.get("service_version"), str
+    ):
+        svc_version = str(incident.details["service_version"])
 
     summary = f"{incident.title}: diagnosed {cause.value} on {incident.service}"
     content = (
@@ -810,7 +855,8 @@ async def create_episodic_memory_for_run(
         f"Diagnosed cause: {cause.value} ({category.value}). "
         f"Evidence keys: {', '.join(ev_keys)}."
     )
-    item, _created = await write_memory_item(
+    item, _created = await _write_memory_in_session(
+        session,
         MemoryWrite(
             layer=MemoryLayer.EPISODIC,
             summary=summary,
@@ -819,12 +865,34 @@ async def create_episodic_memory_for_run(
             category=category,
             cause=cause,
             trust_level=TrustLevel.CANDIDATE,
-            source_run_id=run_id,
+            source_run_id=run.id,
             service_version=svc_version,
         ),
-        config=config,
+        config or MemoryConfig(),
     )
     return item
+
+
+async def create_episodic_memory_for_run(
+    run_id: str,
+    config: MemoryConfig | None = None,
+) -> MemoryItem | None:
+    """Create a CANDIDATE episodic MemoryItem when a non-evaluation run completes."""
+    await ensure_ready()
+    factory = get_sessionmaker()
+    async with factory() as session:
+        async with session.begin():
+            run = await session.get(RunRow, run_id)
+            if run is None or run.status != "COMPLETED" or not isinstance(run.final_report, dict):
+                return None
+            if bool((run.config or {}).get("is_eval", False)):
+                return None
+            incident = await session.get(IncidentRow, run.incident_id)
+            if incident is None:
+                return None
+            return await _create_episodic_memory_in_session(
+                session, run, incident, run.final_report, config
+            )
 
 
 async def record_run_feedback(
@@ -881,12 +949,21 @@ async def record_run_feedback(
                 else:
                     unchanged_uncited_ids.append(mem_row.id)
 
-            # Also update episodic memory generated directly from this run, if any
-            generated = list(
+            # Also update episodic memory generated directly from this run (including deduplicated)
+            generated_by_query = list(
                 await session.scalars(
                     select(MemoryItemRow).where(MemoryItemRow.source_run_id == run_id)
                 )
             )
+            generated_map: dict[str, MemoryItemRow] = {row.id: row for row in generated_by_query}
+            linked_ids = (run.config or {}).get("_produced_memory_ids") or []
+            if isinstance(linked_ids, list):
+                for mid in linked_ids:
+                    if isinstance(mid, str) and mid not in generated_map:
+                        linked_row = await session.get(MemoryItemRow, mid)
+                        if linked_row is not None:
+                            generated_map[linked_row.id] = linked_row
+            generated = list(generated_map.values())
             for gen_row in generated:
                 if gen_row.id in promoted_ids or gen_row.id in rejected_ids:
                     continue

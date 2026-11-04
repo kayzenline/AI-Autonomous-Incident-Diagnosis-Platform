@@ -61,6 +61,7 @@ class RunPublic(BaseModel):
 
 
 def _public(row: RunRow) -> dict[str, object]:
+    public_config = {k: v for k, v in (row.config or {}).items() if not str(k).startswith("_")}
     return RunPublic(
         id=row.id,
         incident_id=row.incident_id,
@@ -68,7 +69,7 @@ def _public(row: RunRow) -> dict[str, object]:
         agent_version=row.agent_version,
         model=row.model,
         prompt_version=row.prompt_version,
-        config=dict(row.config or {}),
+        config=public_config,
         final_report=row.final_report,
         failure_reason=row.failure_reason,
     ).model_dump(mode="json")
