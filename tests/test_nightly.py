@@ -181,3 +181,33 @@ def test_archived_repaired_deepseek_measurement_is_complete_and_honest() -> None
     assert data["headline"] == {"metric": "M4 Top-1 minus M3 Top-1", "value": -0.1167}
     assert data["summary"]["m4"]["accepted_illegal_citation_rate"] == 0.0
     assert data["judge"]["status"] == "completed"
+
+
+def test_nightly_include_m6_records_ablation_section(tmp_path) -> None:
+    scenarios = load_frozen_scenarios()[:1]
+    assert (
+        nightly.main(
+            [
+                "--provider",
+                "fake",
+                "--repeats",
+                "2",
+                "--output",
+                str(tmp_path),
+                "--scenarios",
+                scenarios[0].id,
+                "--include-m6",
+            ]
+        )
+        == 0
+    )
+    saved = json.loads((tmp_path / "report.json").read_text(encoding="utf-8"))
+    assert saved["status"] == "completed"
+    assert "m6_ablation" in saved
+    assert saved["m6_ablation"]["scenario_set"] == "m6-v1"
+    assert saved["m6_ablation"]["repeats_k"] == 2
+    assert set(saved["m6_ablation"]["modes"].keys()) == {
+        "no_memory",
+        "episodic",
+        "episodic_plus_semantic",
+    }

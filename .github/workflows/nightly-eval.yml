@@ -9,6 +9,10 @@ on:
         description: "Optional comma-separated frozen IDs for a diagnostic smoke run"
         type: string
         default: ""
+      include_m6:
+        description: "Also run the M6 3-way memory ablation on scenarios/m6"
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -29,6 +33,7 @@ jobs:
       OPENAI_MODEL: ${{ vars.EVAL_MODEL }}
       EVAL_REPEATS: ${{ vars.EVAL_REPEATS }}
       EVAL_SCENARIOS: ${{ inputs.scenarios }}
+      EVAL_INCLUDE_M6: ${{ inputs.include_m6 }}
       EVAL_JUDGE_MODEL: ${{ vars.EVAL_JUDGE_MODEL }}
     steps:
       - uses: actions/checkout@v4
@@ -57,9 +62,13 @@ jobs:
           PY
       - name: Measure M3 and M4 (non-gating)
         run: |
+          extra_args=()
+          if [ "$EVAL_INCLUDE_M6" = "true" ]; then
+            extra_args+=(--include-m6)
+          fi
           python -m app.eval.nightly --provider openai \
             --repeats "$EVAL_REPEATS" --judge-model "$EVAL_JUDGE_MODEL" \
-            --output eval-results --scenarios "$EVAL_SCENARIOS"
+            --output eval-results --scenarios "$EVAL_SCENARIOS" "${extra_args[@]}"
       - name: Retain measurements even on failure
         if: always()
         uses: actions/upload-artifact@v4
