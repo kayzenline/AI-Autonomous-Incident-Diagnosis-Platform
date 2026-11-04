@@ -41,6 +41,7 @@ from app.persistence.models import (
 )
 from app.persistence.session import get_sessionmaker
 from app.persistence.store import (
+    cancel_run,
     create_episodic_memory_for_run,
     create_incident,
     finish_run,
@@ -724,6 +725,33 @@ def test_review_fixes_explicit_citations_default_ref_time_and_dedup_feedback() -
         async with get_sessionmaker()() as session:
             row = await session.get(MemoryItemRow, mem1.id)
             assert row is not None and row.trust_level == "CONFIRMED"
+
+        # Cancelled run before finish_run must NOT create or deduplicate episodic memory
+        inc3 = await create_incident(
+            IncidentCreate(
+                title="Cancelled run test",
+                description="5xx on cancelled-svc",
+                service="cancelled-svc",
+            )
+        )
+        run3, _ = await start_run(inc3.id, "dedup-run-3", None, is_eval=False)
+        await mark_running(run3.id)
+        await cancel_run(run3.id)
+        await finish_run(
+            run3.id,
+            "COMPLETED",
+            report,
+            None,
+            create_episodic_memory=True,
+        )
+        assert await create_episodic_memory_for_run(run3.id) is None
+        async with get_sessionmaker()() as session:
+            rows3 = list(
+                await session.scalars(
+                    select(MemoryItemRow).where(MemoryItemRow.service == "cancelled-svc")
+                )
+            )
+            assert rows3 == []
 
     asyncio.run(_check_dedup_producing_run_feedback())
 
