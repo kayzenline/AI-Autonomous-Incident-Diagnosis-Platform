@@ -154,10 +154,10 @@ Or interact directly with the REST + SSE endpoints:
 # 1. List available frozen scenarios (ground_truth is never exposed)
 curl -H "X-API-Key: $API_KEY" http://127.0.0.1:8000/v1/scenarios
 
-# 2. Create an incident
+# 2. Create an incident with the selected scenario's time window
 INCIDENT_ID=$(curl -s -X POST http://127.0.0.1:8000/v1/incidents \
   -H "X-API-Key: $API_KEY" -H "Content-Type: application/json" \
-  -d '{"title":"Checkout latency spike","description":"p99 latency above 1.5s","service":"checkout"}' \
+  -d '{"title":"Checkout latency spike","description":"p99 latency above 1.5s","service":"checkout","occurred_at":"2026-10-23T03:00:00Z","detected_at":"2026-10-23T03:10:00Z"}' \
   | python3 -c "import sys,json; print(json.load(sys.stdin)['id'])")
 
 # 3. Start an async diagnosis run (optional: checkpoint_policy="resume" for M7 checkpoint recovery)

@@ -25,7 +25,7 @@
 | **自动化测试套件** | **123 passed（`0` 失败）** | `pytest`（覆盖 SQLite 单元/集成测试 + 真实 PostgreSQL 16 与 Alembic 三版本迁移 `0001_m2 -> 0002_m6 -> 0003_m7` 进程重启验收） |
 | **版本化评测场景集** | **35 个场景**（`29` `frozen-v1` + `6` `m6-v1`） | SHA-256 锁定于 [`frozen-manifest.json`](../evals/baselines/frozen-manifest.json)（其中 `9` 个 `holdout: true` 场景全程物理隔离）与 [`m6-manifest.json`](../evals/baselines/m6-manifest.json) |
 | **Cassette 确定性回放** | **29 / 29 场景零漂移** | [`evals/cassettes/m4-frozen.json`](../evals/cassettes/m4-frozen.json)，每次 PR CI 自动运行 `python -m app.eval check` 校验 |
-| **证据引用合规率** | **`0.0000` 最终采纳非法引用率** | 在全部离线基线（`M3`/`M4`/`M6`/`M7`）及全部 **`165` 次真实 `deepseek-flash` 运行**中，`accepted_illegal_citation_rate` 均为 `0.0000` |
+| **证据引用合规率** | **`0.0000` 最终采纳非法引用率** | 在全部离线基线（`M3`/`M4`/`M6`/`M7`）及真实 `deepseek-flash` 归档的指标中（M6 仅统计首轮），`accepted_illegal_citation_rate` 均为 `0.0000` |
 
 ---
 
@@ -133,11 +133,11 @@ flowchart LR
      - 当人工反馈 `verdict="correct"` 时，**仅将该 Run 产出的 `CANDIDATE` 记忆及 `cited=true` 的召回记忆晋升为 `CONFIRMED`**，绝不连带晋升未被引用的旁路召回记忆；当 `verdict="incorrect"` 时，将其打入 `QUARANTINED` 隔离；
      - `MemoryItem` 只能作为引导工具调用方向的**线索（Hypothesis Cue）**，**绝不能充当 `DiagnosisReport` 的 `evidence_key`**。若实时工具返回的证据证伪了历史记忆，Agent 必须在 `HypothesisBoard` 中将该假设置为 `REJECTED`。
 - **线上 54 次真实 `deepseek-flash` 三组记忆消融与非 Holdout 验证（[`2026-11-04-deepseek-m6-ablation.json`](../evals/measurements/2026-11-04-deepseek-m6-ablation.json)，Run `41819885445`）**：
-  - 在独立版本集 `m6-v1`（6 个场景 × `k=3` 重复 × 3 种模式 = **54 次真实模型运行**）上：
-    - `no_memory`：`Top-1 = 0.5000`（`9/18`），`evidence_recall = 0.3889`，`evidence_precision = 0.3611`；
-    - `episodic`（启用情景记忆）：**`Top-1 = 1.0000`（`18/18`，较无记忆提升 `+0.5000`）**，`agreement@3 = 1.0000`，`memory_recall@k = 1.0000`，`memory_citation_precision = 1.0000`；
-    - `episodic_plus_semantic`（启用情景 + 语义知识库）：**`Top-1 = 1.0000`（`18/18`，`+0.5000`）**，且 **`evidence_recall` 进一步提升至 `0.7222`（较无记忆 `+0.3333`）**、**`evidence_precision` 提升至 `0.7778`（较无记忆 `+0.4167`）**，平均工具调用降至 **`5.50` 次**；
-    - **12/12 次污染与陈旧记忆 100% 拒斥**：在 2 个污染记忆场景与 2 个版本陈旧场景的全部 `k=3` 重复运行中，`deepseek-flash` 100% 在核查实时监控后拒斥了误导记忆；
+  - 在独立版本集 `m6-v1`（6 个场景 × `k=3` 重复 × 3 种模式 = **54 次真实模型运行**）上，归档的准确率、证据指标、记忆指标和平均工具调用仅统计每个场景的**首轮结果（每组 6 条）**；只有 `agreement@3` 使用全部重复运行：
+    - `no_memory`：`Top-1 = 0.5000`（`3/6`），`evidence_recall = 0.3889`，`evidence_precision = 0.3611`；
+    - `episodic`（启用情景记忆）：**`Top-1 = 1.0000`（`6/6`，较无记忆提升 `+0.5000`）**，`agreement@3 = 1.0000`，`memory_recall@k = 1.0000`，`memory_citation_precision = 1.0000`；
+    - `episodic_plus_semantic`（启用情景 + 语义知识库）：**`Top-1 = 1.0000`（`6/6`，`+0.5000`）**，且 **`evidence_recall` 进一步提升至 `0.7222`（较无记忆 `+0.3333`）**、**`evidence_precision` 提升至 `0.7778`（较无记忆 `+0.4167`）**，平均工具调用降至 **`5.50` 次**；
+    - **污染/陈旧记忆显式拒斥率为 `0.0000`**：两个启用记忆的模式各有 4 条首轮污染/陈旧场景记录，均未满足评测器要求的显式拒绝事件，记录为 `0/4`；无记忆模式为 N/A。正确预测并不等于显式拒斥，现有归档不能证明全部重复运行均拒斥了误导记忆；
     - **非 Holdout 多跳与非故障边界提升**：仅基于 20 个 `holdout: false` 场景优化下钻指引后，`multihop-checkout-payments-pool` 在真实 `deepseek-flash` 上从 **`0/3` 提升至 `3/3`（`1.0000`）**，`normal-fluctuation` 与 `vague-log-healthy` 的 `NOT_A_FAULT` 准确率达到 **`6/6`（`1.0000`）**。
 
 ---
@@ -188,13 +188,13 @@ flowchart LR
 
 ### 表 3：M6 双层记忆三组消融实验（`m6-v1` 6 场景，离线基线 + 真实 `deepseek-flash` `k=3` 共 54 次运行）
 
-> **数据来源**：真实模型测量归档于 [`evals/measurements/2026-11-04-deepseek-m6-ablation.json`](../evals/measurements/2026-11-04-deepseek-m6-ablation.json)（[GitHub Actions Run `41819885445`](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/41819885445)），离线基线归档于 [`evals/baselines/m6-ablation.json`](../evals/baselines/m6-ablation.json)。`m6-v1` 仅与同数据集的 `no_memory` 对照计算净收益，不与 29 场景 `frozen-v1` 直接相减。
+> **数据来源**：真实模型测量归档于 [`evals/measurements/2026-11-04-deepseek-m6-ablation.json`](../evals/measurements/2026-11-04-deepseek-m6-ablation.json)（[GitHub Actions Run `41819885445`](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/41819885445)），离线基线归档于 [`evals/baselines/m6-ablation.json`](../evals/baselines/m6-ablation.json)。`m6-v1` 仅与同数据集的 `no_memory` 对照计算净收益，不与 29 场景 `frozen-v1` 直接相减。除 `agreement@3` 外，以下真实模型指标均来自每组 6 条首轮记录，不能按 18 次运行解读。拒斥率要求显式拒绝事件且未采用污染根因；无记忆模式的记忆指标为 N/A。
 
-| 消融实验组 (`m6-v1` 套件) | 离线 Harness Top-1 (`k=1`) | 真实 `deepseek-flash` Top-1 (`k=3`, 18 次/组) | 真实模型 `agreement@3` | 真实模型 Evidence Recall | 真实模型 Evidence Precision | `memory_recall@k` | `memory_citation_precision` | 污染/陈旧记忆拒斥率 (`12` 次运行) | 真实模型平均工具调用 |
+| 消融实验组 (`m6-v1` 套件) | 离线 Harness Top-1 (`k=1`) | 真实 `deepseek-flash` Top-1 (首轮 6 条/组) | 真实模型 `agreement@3` | 真实模型 Evidence Recall | 真实模型 Evidence Precision | `memory_recall@k` | `memory_citation_precision` | 污染/陈旧记忆显式拒斥率 (首轮 4 条/启用组) | 真实模型平均工具调用 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **`no_memory`**（无记忆对照） | `0.3333` (`2/6`) | `0.5000` (`9/18`) | `0.9444` | `0.3889` | `0.3611` | `0.0000` | `1.0000` | `12 / 12` (`1.0000`) | `6.17` |
-| **`episodic`**（+情景记忆） | `0.6667` (`+0.3334`) | **`1.0000`** (`18/18`, **`+0.5000`**) | **`1.0000`** | `0.6667` (`+0.2778`) | `0.6500` (`+0.2889`) | **`1.0000`** | **`1.0000`** | **`12 / 12` (`1.0000`)** | `5.67` |
-| **`episodic_plus_semantic`**（+情景+语义知识库） | **`1.0000`** (`+0.6667`) | **`1.0000`** (`18/18`, **`+0.5000`**) | **`1.0000`** | **`0.7222`** (`+0.3333`) | **`0.7778`** (`+0.4167`) | **`1.0000`** | **`1.0000`** | **`12 / 12` (`1.0000`)** | **`5.50`** |
+| **`no_memory`**（无记忆对照） | `0.3333` (`2/6`) | `0.5000` (`3/6`) | `0.9444` | `0.3889` | `0.3611` | N/A | N/A | N/A | `6.17` |
+| **`episodic`**（+情景记忆） | `0.6667` (`+0.3334`) | **`1.0000`** (`6/6`, **`+0.5000`**) | **`1.0000`** | `0.6667` (`+0.2778`) | `0.6500` (`+0.2889`) | **`1.0000`** | **`1.0000`** | `0 / 4` (`0.0000`) | `5.67` |
+| **`episodic_plus_semantic`**（+情景+语义知识库） | **`1.0000`** (`+0.6667`) | **`1.0000`** (`6/6`, **`+0.5000`**) | **`1.0000`** | **`0.7222`** (`+0.3333`) | **`0.7778`** (`+0.4167`) | **`1.0000`** | **`1.0000`** | `0 / 4` (`0.0000`) | **`5.50`** |
 
 #### 附：非 Holdout 跨服务多跳与 `NOT_A_FAULT` 边界优化前后对比（`deepseek-flash`, `k=3`）
 
@@ -221,8 +221,8 @@ flowchart LR
 
 回顾 M1 到 M7 的开发过程，我们最重要的收获不是“接上了多少个框架”，而是验证了一套**让 Agent 诊断系统始终处于可证伪、可度量状态**的工程方法：
 
-1. **先有证据账本与只读 Verifier，再谈自主循环**：所有 `165` 次真实模型运行与全部离线基线的非法引用采纳率始终为 `0.0000`；
+1. **先有证据账本与只读 Verifier，再谈自主循环**：真实模型归档的指标与离线基线的非法引用采纳率均为 `0.0000`（M6 仅统计首轮，不能外推至全部重复运行）；
 2. **离线 Cassette Gate 与线上真实模型测量各司其职**：Cassette 保护每次 PR 的编排与解析逻辑不退化，而真实 `deepseek-flash` 测量帮我们抓出了离线测试看不见的契约缺失与跨服务下钻瓶颈；
-3. **记忆系统必须证明自己“既能提分、又能抗污染”**：通过 `m6-v1` 线上 54 次三组消融，我们量化证实了双层记忆将 `Top-1` 从 `0.5000` 提升至 `1.0000`、证据精确率从 `0.3611` 提升至 `0.7778`，且在 12 次污染/陈旧记忆测试中保持 100% 拒斥。
+3. **记忆系统必须证明自己“既能提分、又能抗污染”**：在 `m6-v1` 线上三组消融的首轮记录中，双层记忆的 `Top-1` 从 `0.5000` 提升至 `1.0000`、证据精确率从 `0.3611` 提升至 `0.7778`。但归档的显式拒斥率为 `0.0000`，尚不能据此宣称已证明抗污染能力；后续需保留每轮结果并验证拒绝事件。
 
 接下来在 **M8** 与 **M9** 中，我们将把 `ToolPort` 的适配器切换至真实的 Prometheus / Loki / MCP 观测源与 Docker Compose 故障注入靶场，并完成线上公开部署。
