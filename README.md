@@ -38,7 +38,8 @@ flowchart TB
     subgraph Modes["Controlled Experiment Modes"]
         M1["M1: Frozen Rule Baseline"]
         M3["M3: Single-Shot LLM (Code-swept evidence)"]
-        M4["M4: Autonomous Investigation Agent"]
+        M4["M4: Autonomous Investigation Loop"]
+        M7["M7: LangGraph StateGraph + Step Checkpoints + HITL Approvals"]
     end
 
     subgraph Ports["Hexagonal Ports"]
@@ -52,7 +53,7 @@ flowchart TB
         Sim["Scenario Simulator (YAML Topologies, Metrics, Logs, Changes)"]
         Prod["Production / MCP Adapters (Prometheus, M8)"]
         LLMProv["LLM Provider / Fake & Cassette Replay"]
-        PG["PostgreSQL + pgvector (Incidents, RunEvents, MemoryItems, M2/M6)"]
+        PG["PostgreSQL + SQLite (Incidents, RunEvents, Memory, Checkpoints, Approvals)"]
     end
 
     subgraph EvalBox["Evaluation & Fairness Isolation"]
@@ -91,6 +92,65 @@ flowchart TB
 | `get_recent_changes` | `ServiceQuery` (`service`, `time_range`) | Code deploys, rollbacks, and config flag changes in window | ArgoCD / GitHub Actions |
 | `get_dependency_health` | `ServiceQuery` (`service`, `time_range`) | Downstream service topology and dependency health | Service Mesh / APM |
 | `query_db_health` | `ServiceQuery` (`service`, `time_range`) | Connection pool usage, max connections, and queue depth | RDS / PgBouncer |
+
+## Quantitative Results & Controlled Experiments
+
+All metrics below are reproduced from committed evaluation artifacts in [`evals/baselines/`](evals/baselines/) and immutable live model measurements in [`evals/measurements/`](evals/measurements/). Offline deterministic harness baselines (`offline-harness`) and live `deepseek-flash` API measurements are reported in separate tables and never mixed.
+
+### 1. Engineering & Verification Summary (M0–M7)
+
+| Dimension | Quantitative Metric | Verification / Artifact |
+| :--- | :--- | :--- |
+| **Completed Milestones** | **8 / 10 (`M0`–`M7`)** | `M0` Skeleton, `M1` Simulator & Rule Baseline, `M2` Async API/SSE/Postgres, `M3` Single-Shot LLM, `M4` Investigation Loop, `M5` CI Gates/Nightly/OTel, `M6` Episodic & Semantic Memory, `M7` LangGraph/Checkpoints/HITL |
+| **Automated Test Suite** | **123 passed (`0` failures)** | `pytest` (SQLite unit/integration + real PostgreSQL 16 end-to-end acceptance in [`tests/test_m2_acceptance.py`](tests/test_m2_acceptance.py)) |
+| **Versioned Eval Scenarios** | **35 scenarios** (`29` `frozen-v1` + `6` `m6-v1`) | SHA-256 locked in [`evals/baselines/frozen-manifest.json`](evals/baselines/frozen-manifest.json) (`9` holdouts isolated) and [`evals/baselines/m6-manifest.json`](evals/baselines/m6-manifest.json) |
+| **Cassette Replay Gate** | **29 / 29 scenarios (`0` drift)** | [`evals/cassettes/m4-frozen.json`](evals/cassettes/m4-frozen.json) verified on every PR via `python -m app.eval check` |
+| **Evidence Citation Safety** | **`0.0000` accepted illegal citation rate** | Enforced across all offline baselines (`M3`, `M4`, `M6`, `M7`) and all `165` live `deepseek-flash` runs |
+
+### 2. Offline Deterministic Harness Baselines (`frozen-v1`, 29 Scenarios, 9 Holdouts)
+
+> **Scope note**: `M3`, `M4`, and `M7` in this table use deterministic scripted/replay adapters (`FakeLLMAdapter` / `InvestigativeFakeLLM`) to verify orchestration, tool-budget enforcement, `EvidenceLedger` grounding, `ReadOnlyVerifier` isolation, and zero-regression across architecture migrations. They are harness gates, not live LLM capability claims.
+
+| Milestone & Mode | Agent Identifier | FAULT Top-1 | FAULT Top-3 | Evidence Recall | Evidence Precision | Verdict Accuracy (`FAULT` / `NOT_A_FAULT` / `UNKNOWN`) | Avg Tool Calls (Max) | Accepted Illegal Citations | Committed Baseline Artifact |
+| :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
+| **M1 Rule Baseline** | `rule-baseline` | `0.6500` | `0.8000` | `0.8000` | `0.6627` | `0.90` / `0.80` / `1.00` | `6.00` (`6`) | `0.0000` | [`m1-rule.json`](evals/baselines/m1-rule.json) |
+| **M3 Single-Shot LLM** | `single-shot-llm` | `0.8500` (`+0.2000`) | `0.9500` (`+0.1500`) | `0.9500` | `0.8167` | `0.95` / `1.00` / `1.00` | `12.90` (`33`) | `0.0000` | [`m3-single-shot.json`](evals/baselines/m3-single-shot.json), [`m3-vs-m1.json`](evals/baselines/m3-vs-m1.json) |
+| **M4 Hand-Written Loop** | `investigation-loop` | **`1.0000`** (`+0.1500`) | **`1.0000`** (`+0.0500`) | **`1.0000`** | **`1.0000`** | `1.00` / `1.00` / `1.00` | **`6.17`** (`8`, **-52.2%**) | `0.0000` | [`m4-agent.json`](evals/baselines/m4-agent.json), [`m4-vs-m3.json`](evals/baselines/m4-vs-m3.json) |
+| **M7 LangGraph `StateGraph`** | `langgraph-investigator` | **`1.0000`** (`0.0000` vs M4) | **`1.0000`** (`0.0000` vs M4) | **`1.0000`** | **`1.0000`** | `1.00` / `1.00` / `1.00` | **`6.17`** (`8`, Verifier `0`) | `0.0000` | [`m7-langgraph.json`](evals/baselines/m7-langgraph.json), [`m7-vs-m4.json`](evals/baselines/m7-vs-m4.json) |
+
+### 3. Live `deepseek-flash` Measurements (`evals/measurements/`, `k=3`, `thinking=disabled`, `temperature=0.0`)
+
+#### 3A. Full 29-Scenario No-Memory Measurement (`frozen-v1`, `k=3` = 87 Runs per Version)
+
+Archived in [`evals/measurements/2026-10-30-deepseek-repaired.json`](evals/measurements/2026-10-30-deepseek-repaired.json) ([GitHub Actions Run `40988173433`](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/40988173433), source `d20db86`) after repairing the M4 live prompt contract (which lifted M4 completion from `8 / 87` (`9.2%`) in [`2026-10-29-deepseek-initial.json`](evals/measurements/2026-10-29-deepseek-initial.json) to **`87 / 87` (`100.0%`)**):
+
+| Live Version (`deepseek-flash`, `k=3`) | Completed Runs | FAULT Top-1 | FAULT Top-3 | Evidence Recall | Evidence Precision | FAULT Severity Accuracy | `agreement@3` | Avg Tool Calls (Max) | First-Output / Accepted Illegal Citations |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **M3 Single-Shot** (pre-swept all services) | `86 / 87` (`98.9%`) | `0.8500` | `0.9333` | `0.9333` | `0.7292` | `0.6333` | `0.9770` | `12.90` (`33`) | `0.0000` / **`0.0000`** |
+| **M4 No-Memory Agent** (bounded `<= 8` calls) | **`87 / 87` (`100.0%`)** | `0.7333` | `0.7667` | `0.7472` | `0.6750` | **`0.8333` (`+0.2000`)** | `0.9425` | **`6.69` (`8`, -48.1%)** | `0.0230` / **`0.0000`** |
+
+- **Key finding**: No-memory M4 recovered `drilldown-truncated-dns` (`1/3` vs. `0/3` in M3) and `dependency-with-cpu-herring` (`1/3` vs. `0/3` in M3) via multi-step time-window narrowing, while using **48.1% fewer tool calls** and improving **severity accuracy by +20.0 percentage points**. Its gap vs. M3 (`-0.1167` Top-1) came from multi-hop downstream pool cases where M3 pre-sweeps every service in code (`22–33` calls) while no-memory M4 spent its `7–8` calls on the entry service.
+
+#### 3B. Live `deepseek-flash` M6 3-Way Memory Ablation (`m6-v1`, 6 Scenarios × `k=3` = 54 Runs) & Offline Baseline
+
+Archived in [`evals/measurements/2026-11-04-deepseek-m6-ablation.json`](evals/measurements/2026-11-04-deepseek-m6-ablation.json) ([GitHub Actions Run `41819885445`](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/41819885445), source `157ae54`) alongside the offline deterministic baseline [`evals/baselines/m6-ablation.json`](evals/baselines/m6-ablation.json):
+
+| Ablation Mode (`m6-v1` Suite) | Offline Harness Top-1 (`k=1`) | Live `deepseek-flash` Top-1 (`k=3`, 18 runs/mode) | Live `agreement@3` | Live Evidence Recall | Live Evidence Precision | Live `memory_recall@k` | Live `memory_citation_precision` | Contamination / Staleness Refusal (`12` runs) | Live Avg Tool Calls |
+| :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
+| **`no_memory`** | `0.3333` (2/6) | `0.5000` (9/18) | `0.9444` | `0.3889` | `0.3611` | `0.0000` | `1.0000` | `12 / 12` (`1.0000`) | `6.17` |
+| **`episodic`** (`+Episodic`) | `0.6667` (`+0.3334`) | **`1.0000`** (18/18, **`+0.5000`**) | **`1.0000`** | `0.6667` (`+0.2778`) | `0.6500` (`+0.2889`) | **`1.0000`** | **`1.0000`** | **`12 / 12` (`1.0000`)** | `5.67` |
+| **`episodic_plus_semantic`** (`+Episodic +Semantic`) | **`1.0000`** (`+0.6667`) | **`1.0000`** (18/18, **`+0.5000`**) | **`1.0000`** | **`0.7222`** (`+0.3333`) | **`0.7778`** (`+0.4167`) | **`1.0000`** | **`1.0000`** | **`12 / 12` (`1.0000`)** | **`5.50`** |
+
+- **Targeted non-holdout prompt verification (`k=3`, [`2026-11-04-deepseek-m6-ablation.json`](evals/measurements/2026-11-04-deepseek-m6-ablation.json))**: After refining multi-hop and `NOT_A_FAULT` guidance using only `holdout: false` scenarios, live `deepseek-flash` improved `multihop-checkout-payments-pool` from **`0/3` (`0.0000`) to `3/3` (`1.0000`, `db_pool_exhausted`)**, `normal-fluctuation` from **`2/3` to `3/3`**, and `vague-log-healthy` from **`1/3` to `3/3`** (`NOT_A_FAULT` verdict accuracy `1.0000`).
+
+### 4. M7 Checkpoint Recovery vs. M2 Restart-Fail Controlled Experiment (`5` Scenarios)
+
+Archived in [`evals/baselines/m7-vs-m4.json`](evals/baselines/m7-vs-m4.json) (`checkpoint_recovery_experiment`, interrupting runs after `1` completed tool call and simulating a process restart):
+
+| Recovery Policy | Interrupted Run Status After Restart | Resumed / Interrupted Run Completion Rate | Resumed FAULT Top-1 | Avg Re-Executed Tool Calls | Avg Total Tool Executions to Complete |
+| :--- | :---: | :---: | :---: | :---: | :---: |
+| **Control: M2 Restart-Fail (`checkpoint_policy='fail'`, default)** | `FAILED (restart)` (`/resume` blocked with `409`) | `0.0000` (requires manual full rerun) | N/A (manual rerun: `1.0000`) | `1.00` | `8.00` |
+| **Treatment: M7 Checkpoint Recovery (`checkpoint_policy='resume'`, opt-in)** | `FAILED (restart)` -> `RUNNING` -> `COMPLETED` | **`1.0000` (`5 / 5`)** | **`1.0000` (`5 / 5`)** | **`0.00` (`-100%`)** | **`7.00` (`-12.5%`)** |
 
 ## Requirements
 
