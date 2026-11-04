@@ -15,6 +15,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from app.core.telemetry import configure_telemetry, flush_telemetry, traced
+from app.eval.m6_ablation import build_m6_manifest, run_m6_ablation_async
 from app.eval.runner import (
     _aggregate_report,
     build_m3_report_async,
@@ -122,6 +123,7 @@ async def run_nightly(
     output: Path,
     scenarios: list[Scenario] | None = None,
     judge: LLMPort | None = None,
+    include_m6: bool = False,
 ) -> dict[str, Any]:
     if repeats < 2:
         raise ValueError("repeats must be at least 2")
@@ -132,12 +134,15 @@ async def run_nightly(
         raise ValueError("No scenarios")
     output.mkdir(parents=True, exist_ok=True)
     manifest = build_manifest()
+    baselines_root = Path(__file__).resolve().parents[2] / "evals/baselines"
     # Check frozen provenance before any live model calls.
-    expected = json.loads(
-        (Path(__file__).resolve().parents[2] / "evals/baselines/frozen-manifest.json").read_text()
-    )
+    expected = json.loads((baselines_root / "frozen-manifest.json").read_text())
     if manifest != expected:
         raise ValueError("Frozen scenario manifest changed")
+    if include_m6:
+        expected_m6 = json.loads((baselines_root / "m6-manifest.json").read_text())
+        if build_m6_manifest() != expected_m6:
+            raise ValueError("M6 scenario manifest changed")
     report: dict[str, Any] = {
         "status": "running",
         "started_at": datetime.now(UTC).isoformat(),
@@ -184,6 +189,13 @@ async def run_nightly(
             "metric": "M4 Top-1 minus M3 Top-1",
             "value": report["comparison"]["top1_delta"],
         }
+        if include_m6:
+            m6_factory = OpenAIAdapter if provider == "openai" else InvestigativeFakeLLM
+            report["m6_ablation"] = await run_m6_ablation_async(
+                llm_factory=m6_factory,
+                repeats=repeats,
+            )
+            save()
         report["judge"] = {"status": "disabled"}
         if judge is not None:
             try:
@@ -210,6 +222,11 @@ def main(argv: list[str] | None = None) -> int:
         "--scenarios", default="", help="Comma-separated frozen IDs for smoke tests"
     )
     parser.add_argument("--judge-model", help="Optional live judge; commentary only")
+    parser.add_argument(
+        "--include-m6",
+        action="store_true",
+        help="Also run the M6 3-way memory ablation on scenarios/m6",
+    )
     args = parser.parse_args(argv)
     if args.repeats < 2:
         parser.error("--repeats must be at least 2")
@@ -231,6 +248,7 @@ def main(argv: list[str] | None = None) -> int:
                 output=args.output,
                 scenarios=selected,
                 judge=OpenAIAdapter(model=args.judge_model) if args.judge_model else None,
+                include_m6=bool(args.include_m6),
             )
         )
     finally:
