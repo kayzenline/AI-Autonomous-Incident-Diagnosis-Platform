@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import func, select
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1250,7 +1250,7 @@ async def prepare_run_checkpoint_resume(run_id: str) -> tuple[RunRow, RunCheckpo
     factory = get_sessionmaker()
     async with factory() as session:
         async with session.begin():
-            run = await session.get(RunRow, run_id)
+            run = await session.scalar(select(RunRow).where(RunRow.id == run_id).with_for_update())
             if run is None:
                 raise StoreError(404, "Run not found.")
             cfg = dict(run.config or {})
@@ -1287,12 +1287,29 @@ async def prepare_run_checkpoint_resume(run_id: str) -> tuple[RunRow, RunCheckpo
             )
             if active_other is not None:
                 raise StoreError(409, "Another run is still active on this incident.")
+            cfg["resumed_from_checkpoint_step"] = checkpoint.step_index
+            started_at = run.started_at if run.started_at is not None else now
+            transition = await session.execute(
+                update(RunRow)
+                .where(
+                    RunRow.id == run_id,
+                    RunRow.status == "FAILED",
+                    RunRow.failure_reason == "restart",
+                )
+                .values(
+                    status="RUNNING",
+                    failure_reason=None,
+                    ended_at=None,
+                    started_at=started_at,
+                    config=cfg,
+                )
+            )
+            if (transition.rowcount or 0) != 1:
+                raise StoreError(409, "Run was already resumed by another request.")
             run.status = "RUNNING"
             run.failure_reason = None
             run.ended_at = None
-            if run.started_at is None:
-                run.started_at = now
-            cfg["resumed_from_checkpoint_step"] = checkpoint.step_index
+            run.started_at = started_at
             run.config = cfg
             await session.flush()
             return run, checkpoint
