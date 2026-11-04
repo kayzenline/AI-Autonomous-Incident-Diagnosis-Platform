@@ -6,11 +6,11 @@ and 200 once it is terminal. A second active run is 409.
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, Literal
 
 from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.api.auth import require_api_key
 from app.core.taxonomy import Cause
@@ -23,6 +23,9 @@ from app.persistence.store import (
     cancel_run,
     events_after,
     get_run,
+    list_run_approvals,
+    prepare_run_checkpoint_resume,
+    record_action_approval,
     record_run_feedback,
     start_run,
 )
@@ -36,6 +39,8 @@ class RunCreate(BaseModel):
     scenario_id: str | None = None
     inherit_prior_runs: bool = True
     is_eval: bool = False
+    executor: Literal["m4", "m7"] = "m7"
+    checkpoint_policy: Literal["fail", "resume"] = "fail"
 
 
 class FeedbackCreate(BaseModel):
@@ -43,6 +48,15 @@ class FeedbackCreate(BaseModel):
 
     verdict: FeedbackVerdict
     true_cause: Cause | None = None
+    notes: str | None = None
+
+
+class ApprovalDecisionCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    action_index: int = Field(default=0, ge=0)
+    decision: Literal["approved", "rejected"]
+    actor: str | None = None
     notes: str | None = None
 
 
@@ -89,6 +103,8 @@ async def post_run(
     scenario_id = None if body is None else body.scenario_id
     inherit_prior = True if body is None else body.inherit_prior_runs
     is_eval = False if body is None else body.is_eval
+    executor_mode = "m7" if body is None else body.executor
+    checkpoint_policy = "fail" if body is None else body.checkpoint_policy
     if scenario_id is not None and resolve_scenario_path(scenario_id) is None:
         raise HTTPException(status_code=422, detail="Unknown scenario_id.")
     key = idempotency_key.strip() if idempotency_key else None
@@ -101,6 +117,8 @@ async def post_run(
             scenario_id,
             inherit_prior_runs=inherit_prior,
             is_eval=is_eval,
+            executor=executor_mode,
+            checkpoint_policy=checkpoint_policy,
         )
     except StoreError as exc:
         raise _http(exc) from exc
@@ -196,3 +214,50 @@ async def post_feedback(
     except StoreError as exc:
         raise _http(exc) from exc
     return JSONResponse(status_code=200, content=result)
+
+
+@router.get("/runs/{run_id}/approvals")
+async def get_approvals(
+    run_id: str,
+    _: None = Depends(require_api_key),
+) -> JSONResponse:
+    try:
+        approvals = await list_run_approvals(run_id)
+    except StoreError as exc:
+        raise _http(exc) from exc
+    return JSONResponse(status_code=200, content={"run_id": run_id, "approvals": approvals})
+
+
+@router.post("/runs/{run_id}/approve")
+async def post_approve(
+    run_id: str,
+    body: ApprovalDecisionCreate,
+    _: None = Depends(require_api_key),
+) -> JSONResponse:
+    try:
+        approval = await record_action_approval(
+            run_id,
+            action_index=body.action_index,
+            decision=body.decision,
+            actor=body.actor,
+            notes=body.notes,
+        )
+    except StoreError as exc:
+        raise _http(exc) from exc
+    return JSONResponse(status_code=200, content=approval)
+
+
+@router.post("/runs/{run_id}/resume")
+async def post_resume(
+    run_id: str,
+    _: None = Depends(require_api_key),
+) -> JSONResponse:
+    try:
+        run, checkpoint = await prepare_run_checkpoint_resume(run_id)
+    except StoreError as exc:
+        raise _http(exc) from exc
+    schedule(run.id, resume_checkpoint=dict(checkpoint.state_json))
+    await asyncio.sleep(0)
+    run = await get_run(run.id)
+    status_code = 202 if run.status in ACTIVE else 200
+    return JSONResponse(status_code=status_code, content=_public(run))

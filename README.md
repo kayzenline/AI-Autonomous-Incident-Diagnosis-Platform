@@ -1,6 +1,6 @@
 # AgentOps
 
-Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M2 persists incidents and runs in SQLite or Postgres, executes the M4 investigator in-process, and streams `RunEvent` rows over SSE. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). Milestone M5 is done: CI eval gates, nightly evaluation harness, OpenTelemetry tracing, and the archived DeepSeek no-memory measurement (`evals/measurements/2026-10-30-deepseek-repaired.json`). Milestone M6 is done: evidence-checked episodic memory, service/runbook semantic knowledge, citation-only feedback trust transitions, and 3-way ablations (`evals/baselines/m6-ablation.json`). See [`docs/handoff.md`](docs/handoff.md) for the step-by-step engineering rationale and handoff guide.
+Read-only incident diagnosis API. Milestone M0 is done: the FastAPI app, the FR-1 incident schema, one error response shape, and CI. Milestone M1 is done: the scenario simulator, the read-only tool port, the frozen scenario set, and the rule baseline. Milestone M2 persists incidents and runs in SQLite or Postgres, executes the investigator in-process, and streams `RunEvent` rows over SSE. Milestone M3 is done: `LLMPort` (`OpenAIAdapter` and `FakeLLMAdapter`), `ThreadedToolPort`, the single-shot code-swept LLM harness with ledger citation checks, and the M3-vs-M1 comparison report. Milestone M4 is done: the hand-written investigation loop (`Triage -> Hypothesize & Investigate -> ReadOnlyVerifier -> DiagnosisReport`), `EvidenceLedger`, `HypothesisBoard`, cassette replay (`evals/cassettes/m4-frozen.json`), and SRE CLI inspection (`python -m app.eval inspect`). Milestone M5 is done: CI eval gates, nightly evaluation harness, OpenTelemetry tracing, and the archived DeepSeek no-memory measurement (`evals/measurements/2026-10-30-deepseek-repaired.json`). Milestone M6 is done: evidence-checked episodic memory, service/runbook semantic knowledge, citation-only feedback trust transitions, and 3-way ablations (`evals/baselines/m6-ablation.json`). Milestone M7 is done: the LangGraph `StateGraph` orchestrator (`app/agent/langgraph_investigator.py`), step checkpoints (`run_checkpoints`) with controlled restart-fail vs. checkpoint-resume experiments (`evals/baselines/m7-vs-m4.json`), and Human-in-the-Loop (HITL) recommendation approvals (`action_approvals`, `/v1/runs/{id}/approvals`, `/v1/runs/{id}/approve`). See [`docs/handoff.md`](docs/handoff.md) for the step-by-step engineering rationale and handoff guide.
 
 ## Architecture
 
@@ -144,14 +144,15 @@ The rule baseline and the original 23 scenarios landed in one commit (`f1eba32`)
 python -m app.eval check
 python -m app.eval write
 python -m app.eval replay
-python -m app.eval inspect drilldown-truncated-dns --mode m4
+python -m app.eval inspect drilldown-truncated-dns --mode m7
 python -m app.eval run-m3 --provider fake
 python -m app.eval run-m4 --provider fake
-python -m app.eval run-m6 --provider fake
-python -m app.eval compare evals/baselines/m3-single-shot.json evals/baselines/m4-agent.json
+python -m app.eval run-m6-ablation --provider fake
+python -m app.eval run-m7 --provider fake
+python -m app.eval compare evals/baselines/m4-agent.json evals/baselines/m7-langgraph.json
 ```
 
-`check` fails when a fresh run does not match the committed M1/M3/M4/M6 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`, `evals/baselines/m4-agent.json`, `evals/baselines/m4-vs-m3.json`, `evals/baselines/m6-ablation.json`), the scenario hashes (`evals/baselines/frozen-manifest.json`, `evals/baselines/m6-manifest.json`), or the M4 cassette replay (`evals/cassettes/m4-frozen.json`). To run M3, M4, or M6 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and pass `--provider openai`.
+`check` fails when a fresh run does not match the committed M1/M3/M4/M6/M7 baseline files (`evals/baselines/m1-rule.json`, `evals/baselines/m3-single-shot.json`, `evals/baselines/m3-vs-m1.json`, `evals/baselines/m4-agent.json`, `evals/baselines/m4-vs-m3.json`, `evals/baselines/m6-ablation.json`, `evals/baselines/m7-langgraph.json`, `evals/baselines/m7-vs-m4.json`), the scenario hashes (`evals/baselines/frozen-manifest.json`, `evals/baselines/m6-manifest.json`), or the M4 cassette replay (`evals/cassettes/m4-frozen.json`). To run M3, M4, M6, or M7 against a live OpenAI model, set `OPENAI_API_KEY` (and optional `OPENAI_MODEL` / `OPENAI_BASE_URL`) and pass `--provider openai`.
 
 ## Persist and diagnose
 
@@ -297,3 +298,28 @@ M6 adds two evidence-checked memory layers (`episodic` incident history and
   `memory_recall_at_k = 1.0`, and `memory_citation_precision = 1.0`. Scores on
   `m6-v1` are compared only against the `no_memory` baseline on `m6-v1` and are
   never subtracted directly from `frozen-v1` (29-scenario) M3/M4 baselines.
+
+## M7 LangGraph orchestrator, step checkpoints, and HITL approvals
+
+M7 migrates the investigation loop onto an explicit LangGraph `StateGraph`
+(`app/agent/langgraph_investigator.py`: `triage -> recall -> investigate_step <-> tool_dispatch -> verify -> finalize`)
+backed by Alembic migration `0003_m7` (`run_checkpoints` and `action_approvals`):
+
+- **Zero-regression orchestrator migration (`evals/baselines/m7-langgraph.json`, `evals/baselines/m7-vs-m4.json`)**:
+  Preserves `Top-1 = 1.0000` (`top1_delta = 0.0` vs. M4), `evidence_recall_delta = 0.0`,
+  `evidence_precision_delta = 0.0`, and `verifier_tool_calls = 0` across all 29
+  `frozen-v1` scenarios.
+- **Restart-fail (M2 default) vs. checkpoint recovery (M7 opt-in)**:
+  - By default (`checkpoint_policy="fail"`), M2's restart policy (`RUNNING -> FAILED(restart)`)
+    remains active on startup and blocks `POST /v1/runs/{id}/resume` (`409 Conflict`).
+  - When a run opts into `checkpoint_policy="resume"`, it explicitly replaces M2's
+    restart-fail rule for that run (`docs/requirements.md` §4.4, §6 M7). `POST /v1/runs/{id}/resume`
+    restores the latest `run_checkpoints` row (`EvidenceLedger`, `HypothesisBoard`,
+    and LLM messages), emits `CHECKPOINT_RESUMED`, and completes the investigation
+    without re-executing completed tool calls (`reexecuted_tool_calls = 0`).
+- **Human-in-the-Loop (HITL) recommendation approvals**:
+  - `GET /v1/runs/{id}/approvals` lists the recommended actions from the run's
+    `final_report` (`status="PENDING"` when `requires_approval=true`).
+  - `POST /v1/runs/{id}/approve` (`decision="approved" | "rejected"`, `action_index`,
+    `actor`, `notes`) updates `action_approvals` and appends a `RECOMMENDATION_APPROVED`
+    or `RECOMMENDATION_REJECTED` event to the run's SSE timeline.

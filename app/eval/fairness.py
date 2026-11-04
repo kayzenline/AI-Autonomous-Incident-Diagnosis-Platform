@@ -5,7 +5,14 @@ import inspect
 from pathlib import Path
 from types import ModuleType
 
-from app.agent import baseline, investigator, ledger, single_shot, verifier
+from app.agent import (
+    baseline,
+    investigator,
+    langgraph_investigator,
+    ledger,
+    single_shot,
+    verifier,
+)
 from app.llm.adapters import fake, investigator_fake, openai
 from app.memory import models as memory_models
 from app.memory import port as memory_port
@@ -17,6 +24,7 @@ def assert_baseline_is_isolated() -> None:
         baseline,
         single_shot,
         investigator,
+        langgraph_investigator,
         ledger,
         verifier,
         fake,

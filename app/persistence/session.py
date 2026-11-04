@@ -31,8 +31,13 @@ def database_url() -> str:
 
 
 def _build(url: str) -> AsyncEngine:
-    engine = create_async_engine(url, pool_pre_ping=not url.startswith("sqlite"))
-    if url.startswith("sqlite"):
+    is_sqlite = url.startswith("sqlite")
+    engine = create_async_engine(
+        url,
+        pool_pre_ping=not is_sqlite,
+        connect_args={"timeout": 30} if is_sqlite else {},
+    )
+    if is_sqlite:
 
         @event.listens_for(engine.sync_engine, "connect")
         def _enable_foreign_keys(dbapi_connection: object, _record: object) -> None:
