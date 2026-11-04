@@ -129,7 +129,7 @@ def test_m2_restart_fail_remains_default_and_blocks_checkpoint_resume(client: Te
         assert started.status_code == 202
         run_id = started.json()["id"]
         assert started.json()["config"]["checkpoint_policy"] == "fail"
-        changed = asyncio.run(fail_runs_after_restart())
+        changed = client.portal.call(fail_runs_after_restart)
         assert changed == 1
     finally:
         executor.pause_runs = False
@@ -176,8 +176,8 @@ def test_opted_in_run_resumes_from_saved_checkpoint_after_restart(client: TestCl
         )
         assert started.status_code == 202
         run_id = started.json()["id"]
-        asyncio.run(save_run_checkpoint(run_id, 1, "tool_dispatch", saved_cp[1]))
-        asyncio.run(fail_runs_after_restart())
+        client.portal.call(save_run_checkpoint, run_id, 1, "tool_dispatch", saved_cp[1])
+        client.portal.call(fail_runs_after_restart)
     finally:
         executor.pause_runs = False
 
@@ -192,7 +192,7 @@ def test_opted_in_run_resumes_from_saved_checkpoint_after_restart(client: TestCl
     assert finished["config"]["resumed_from_checkpoint_step"] == 1
     assert finished["final_report"]["hypotheses"][0]["cause"] == "cpu_saturation"
 
-    checkpoints = asyncio.run(list_run_checkpoints(run_id))
+    checkpoints = client.portal.call(list_run_checkpoints, run_id)
     assert len(checkpoints) >= 2
     events_text = client.get(f"/v1/runs/{run_id}/events", headers=HEADERS).text
     assert "CHECKPOINT_RESUMED" in events_text

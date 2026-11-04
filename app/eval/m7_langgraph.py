@@ -14,8 +14,6 @@ import json
 from pathlib import Path
 from typing import Any
 
-import pytest
-
 from app.agent.langgraph_investigator import (
     InterruptedAfterCheckpointError,
     investigate_with_langgraph,
@@ -153,7 +151,7 @@ async def run_m7_checkpoint_experiment_async(
         # 1. Control (M2 restart-fail policy: checkpoint_policy='fail')
         # Interrupted run transitions RUNNING -> FAILED(restart); completing requires full rerun.
         control_tools = CountingSimulatorTools(scenario.world)
-        with pytest.raises(InterruptedAfterCheckpointError):
+        try:
             await investigate_with_langgraph(
                 scenario.incident,
                 control_tools,
@@ -162,6 +160,10 @@ async def run_m7_checkpoint_experiment_async(
                 is_eval=True,
                 stop_after_tool_calls=interrupt_after,
             )
+        except InterruptedAfterCheckpointError:
+            pass
+        else:
+            raise AssertionError("Expected InterruptedAfterCheckpointError for control case")
         calls_before_restart = len(control_tools.executed_calls)
         # Under M2 policy, the interrupted run is marked FAILED(restart) with final_report=None.
         # A manual retry starts from step 0 and re-executes the first `interrupt_after` tool calls.
@@ -199,7 +201,7 @@ async def run_m7_checkpoint_experiment_async(
                 "state_json": state_json,
             }
 
-        with pytest.raises(InterruptedAfterCheckpointError):
+        try:
             await investigate_with_langgraph(
                 scenario.incident,
                 treatment_tools,
@@ -209,6 +211,10 @@ async def run_m7_checkpoint_experiment_async(
                 checkpoint_saver=_saver,
                 stop_after_tool_calls=interrupt_after,
             )
+        except InterruptedAfterCheckpointError:
+            pass
+        else:
+            raise AssertionError("Expected InterruptedAfterCheckpointError for treatment case")
         calls_before_resume = len(treatment_tools.executed_calls)
         latest_step = max(saved_checkpoints)
         latest_cp = saved_checkpoints[latest_step]["state_json"]

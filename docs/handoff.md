@@ -184,10 +184,16 @@ PR `#37`、`#40`、`#42` 已完成工具链与契约注入，并在 GitHub Actio
 5. **独立版本集 `m6-v1`（`scenarios/m6/*.yaml`）与三组消融对比（`evals/baselines/m6-ablation.json`）**：
    - 新增 6 个 M6 专属场景（锁定于 `evals/baselines/m6-manifest.json`）：2 个污染记忆拒斥场景（`memory-contamination-bad-deploy`、`memory-contamination-cpu-herring`）、2 个服务版本升级陈旧记忆场景（`stale-service-checkout-v2-pool`、`stale-service-gateway-v3-dns`）、1 个多依赖分支情景记忆加速场景（`episodic-multidep-inventory-pool`）、1 个语义 Runbook 指引场景（`semantic-runbook-cert-config`）。
    - 三组消融实测结果（`python -m app.eval run-m6` / `python -m app.eval check`）：
-     - `no_memory`：Top-1 = `0.3333`（2/6），污染拒斥率 = `1.0`
-     - `episodic`：Top-1 = `0.6667`（4/6，`+0.3334` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
-     - `episodic_plus_semantic`：Top-1 = `1.0000`（6/6，`+0.3333` vs `episodic`，`+0.6667` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
-   - 因 `episodic` 与 `semantic` 两层均取得显著正向 Top-1 收益，`layer_gating` 判定两层均默认启用（若任一层收益 `<= 0` 则自动默认禁用）。
+     - **离线确定性基线（`evals/baselines/m6-ablation.json`）**：
+       - `no_memory`：Top-1 = `0.3333`（2/6），污染拒斥率 = `1.0`
+       - `episodic`：Top-1 = `0.6667`（4/6，`+0.3334` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
+       - `episodic_plus_semantic`：Top-1 = `1.0000`（6/6，`+0.3333` vs `episodic`，`+0.6667` vs `no_memory`），`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，污染拒斥率 = `1.0`
+     - **真实 `deepseek-flash` 线上三组消融实测（Run [`41819885445`](https://github.com/kayzenline/AI-Autonomous-Incident-Diagnosis-Platform/actions/runs/41819885445)，`k=3`，共 54 次运行，归档于 `evals/measurements/2026-11-04-deepseek-m6-ablation.json`，Issue `#46`）**：
+       - `no_memory`：Top-1 = `0.5000`（9/18），`evidence_recall = 0.3889`，`evidence_precision = 0.3611`，`avg_tool_calls = 6.17`
+       - `episodic`：Top-1 = **`1.0000`**（18/18，**`+0.5000` vs `no_memory`**），`agreement@3 = 1.0000`，`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，`evidence_recall = 0.6667`，`evidence_precision = 0.6500`，`avg_tool_calls = 5.67`
+       - `episodic_plus_semantic`：Top-1 = **`1.0000`**（18/18，**`+0.5000` vs `no_memory`**），`agreement@3 = 1.0000`，`memory_recall@k = 1.0`，`memory_citation_precision = 1.0`，`evidence_recall = 0.7222`（较 `episodic` 提升 `+0.0555`），`evidence_precision = 0.7778`（较 `episodic` 提升 `+0.1278`），`avg_tool_calls = 5.50`
+       - 全部 12 次污染/陈旧记忆对照运行（`4 场景 × k=3`）100% 拒斥误导记忆（`memory_citation_precision = 1.0`）；同时非 Holdout 多跳场景 `multihop-checkout-payments-pool` 从 `0/3` 提升至 `3/3`（`db_pool_exhausted`），`normal-fluctuation` 与 `vague-log-healthy` 的 `NOT_A_FAULT` 准确率从 `3/6` 提升至 `6/6`（`1.0000`）。
+   - 因 `episodic` 与 `semantic` 两层均取得显著正向收益，`layer_gating` 判定两层均默认启用（若任一层收益 `<= 0` 则自动默认禁用）。
    - **口径约束**：`m6-v1` 仅在与同数据集的 `no_memory` 基线对照时衡量记忆层净收益，严禁与 `frozen-v1`（29 场景）上的 M3/M4 历史基线直接相减。
 
 ### 4. M7 LangGraph 编排器迁移、Checkpoint 恢复对照实验与 HITL 审批（已完成，Issue `#47`）
