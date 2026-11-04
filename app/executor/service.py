@@ -74,6 +74,9 @@ async def execute(run_id: str) -> None:
         await finish_run(run_id, "FAILED", None, "executor_error")
         return
     status, report, reason = _outcome(result)
+    await record_memory_recalls(run_id, result.recalled_memories)
+    if not bool((run.config or {}).get("is_eval", False)):
+        await create_episodic_memory_for_run(run_id, status=status, report=report)
     await finish_run(
         run_id,
         status,
@@ -83,9 +86,6 @@ async def execute(run_id: str) -> None:
         tokens_out=result.tokens_out,
         cost_usd=result.cost_usd,
     )
-    await record_memory_recalls(run_id, result.recalled_memories)
-    if not bool((run.config or {}).get("is_eval", False)):
-        await create_episodic_memory_for_run(run_id)
 
 
 async def _investigate(run_id: str, incident_row: IncidentRow) -> InvestigationResult:

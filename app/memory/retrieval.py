@@ -6,6 +6,7 @@ import re
 from collections.abc import Sequence
 from datetime import datetime
 
+from app.core.clock import WallClock
 from app.core.window import _as_utc
 from app.memory.models import (
     MemoryConfig,
@@ -155,7 +156,9 @@ def rank_memories(
     docs = [f"{it.service} {it.summary} {it.content}" for it in filtered]
     lex_scores = bm25_scores(q_text, docs) if q_text else [1.0 for _ in filtered]
 
-    ref_time = _as_utc(query.reference_time) if query.reference_time is not None else None
+    ref_time = (
+        _as_utc(query.reference_time) if query.reference_time is not None else WallClock().now()
+    )
     scored: list[ScoredMemory] = []
 
     for item, bm25_val in zip(filtered, lex_scores, strict=True):

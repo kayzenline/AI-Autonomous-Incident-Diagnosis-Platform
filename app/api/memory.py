@@ -4,6 +4,7 @@ GET /v1/memory/search defaults to returning CONFIRMED memories only, with
 explicit `include_candidate=true` opt-in for CANDIDATE memories.
 """
 
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, Query
@@ -50,6 +51,7 @@ async def get_memory_search(
     include_candidate: bool = Query(default=False),
     include_rejected: bool = Query(default=False),
     service_version: str | None = Query(default=None),
+    reference_time: datetime | None = Query(default=None),
     limit: int = Query(default=10, ge=1, le=50),
     _: None = Depends(require_api_key),
 ) -> JSONResponse:
@@ -62,6 +64,7 @@ async def get_memory_search(
             include_candidate=include_candidate,
             include_rejected=include_rejected,
             service_version=service_version,
+            reference_time=reference_time,
             limit=limit,
         )
     )

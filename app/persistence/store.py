@@ -633,6 +633,26 @@ def _row_to_memory_item(row: MemoryItemRow) -> MemoryItem:
     )
 
 
+async def _link_producing_run(
+    session: AsyncSession, source_run_id: str | None, memory_id: str
+) -> None:
+    if not source_run_id:
+        return
+    producing_run = await session.get(RunRow, source_run_id)
+    if producing_run is None:
+        return
+    cfg_dict = dict(producing_run.config or {})
+    produced_ids = [
+        str(mid)
+        for mid in (cfg_dict.get("_produced_memory_ids") or [])
+        if isinstance(mid, str) and mid
+    ]
+    if memory_id not in produced_ids:
+        produced_ids.append(memory_id)
+    cfg_dict["_produced_memory_ids"] = produced_ids
+    producing_run.config = cfg_dict
+
+
 async def write_memory_item(
     body: MemoryWrite,
     config: MemoryConfig | None = None,
@@ -676,6 +696,7 @@ async def write_memory_item(
                     existing.last_used_at = now
                     if body.trust_level == TrustLevel.CONFIRMED:
                         existing.trust_level = TrustLevel.CONFIRMED.value
+                    await _link_producing_run(session, body.source_run_id, existing.id)
                     await session.flush()
                     return _row_to_memory_item(existing), False
 
@@ -701,6 +722,7 @@ async def write_memory_item(
                 created_at=now,
             )
             session.add(row)
+            await _link_producing_run(session, body.source_run_id, row.id)
             await session.flush()
             return _row_to_memory_item(row), True
 
@@ -774,21 +796,28 @@ async def get_run_memory_recalls(run_id: str) -> list[MemoryRecallRow]:
 async def create_episodic_memory_for_run(
     run_id: str,
     config: MemoryConfig | None = None,
+    *,
+    status: str | None = None,
+    report: dict[str, Any] | None = None,
 ) -> MemoryItem | None:
     """Create a CANDIDATE episodic MemoryItem when a non-evaluation run completes."""
     await ensure_ready()
     factory = get_sessionmaker()
     async with factory() as session:
         run = await session.get(RunRow, run_id)
-        if run is None or run.status != "COMPLETED" or not isinstance(run.final_report, dict):
+        if run is None:
+            return None
+        eff_status = status if status is not None else run.status
+        eff_report = report if report is not None else run.final_report
+        if eff_status != "COMPLETED" or not isinstance(eff_report, dict):
             return None
         if bool((run.config or {}).get("is_eval", False)):
             return None
         incident = await session.get(IncidentRow, run.incident_id)
         if incident is None or not incident.service:
             return None
-        verdict = run.final_report.get("verdict")
-        hyps = run.final_report.get("hypotheses") or []
+        verdict = eff_report.get("verdict")
+        hyps = eff_report.get("hypotheses") or []
         if verdict != "FAULT" or not hyps or not isinstance(hyps[0], dict):
             return None
         top = hyps[0]
@@ -881,12 +910,21 @@ async def record_run_feedback(
                 else:
                     unchanged_uncited_ids.append(mem_row.id)
 
-            # Also update episodic memory generated directly from this run, if any
-            generated = list(
+            # Also update episodic memory generated directly from this run (including deduplicated)
+            generated_by_query = list(
                 await session.scalars(
                     select(MemoryItemRow).where(MemoryItemRow.source_run_id == run_id)
                 )
             )
+            generated_map: dict[str, MemoryItemRow] = {row.id: row for row in generated_by_query}
+            linked_ids = (run.config or {}).get("_produced_memory_ids") or []
+            if isinstance(linked_ids, list):
+                for mid in linked_ids:
+                    if isinstance(mid, str) and mid not in generated_map:
+                        linked_row = await session.get(MemoryItemRow, mid)
+                        if linked_row is not None:
+                            generated_map[linked_row.id] = linked_row
+            generated = list(generated_map.values())
             for gen_row in generated:
                 if gen_row.id in promoted_ids or gen_row.id in rejected_ids:
                     continue
