@@ -47,7 +47,7 @@ Do not replace earlier failures with corrected runs.
 - `FAULT severity accuracy`: M3 `0.6333`, M4 `0.8333` (`+0.2000`).
 - `Citation metrics`: `first_output_illegal_citation_rate` is `0.0000` (M3) and `0.0230` (M4); `accepted_illegal_citation_rate` is `0.0000` for both.
 - `agreement@3`: M3 `0.9770`, M4 `0.9425`. Judge commentary status: `completed` (`58` first-repeat commentaries).
-- Tool budget: M4 averaged `6.69` tool calls per run (max `8`), versus M3's code-swept `12.90` average (max `33`).
+- Tool budget: M4 averaged `6.74` tool calls per run across all 87 runs (max `8`), versus M3's code-swept `13.28` average (max `33`).
 - Limitations & analysis (no-memory reference for M6):
   - M4 recovered `1/3` on `drilldown-truncated-dns` and `1/3` on `dependency-with-cpu-herring` (both `0/3` in M3), proving that multi-step window narrowing works on a live model.
   - However, M4 scored `0/3` on `drilldown-payments-pool`, `multihop-checkout-payments-pool`, and `multihop-checkout-pricing-dns` (all `3/3` in M3). M3's harness sweeps every service in `scenario.world.services` upfront (`22–33` tool calls), whereas no-memory M4 spent its `7–8` tool calls on local `checkout` metrics/logs and stopped at the first-hop `dependency_timeout` without pivoting to `payments` or `pricing`.
