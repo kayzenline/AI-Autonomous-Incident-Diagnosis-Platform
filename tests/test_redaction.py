@@ -38,3 +38,13 @@ def test_untrusted_wrapper_keeps_the_text() -> None:
     assert wrapped.startswith(UNTRUSTED_START)
     assert wrapped.endswith(UNTRUSTED_END)
     assert "disk full" in wrapped
+
+
+def test_system_prompts_name_the_markers_the_wrapper_emits() -> None:
+    from app.agent.investigator import INVESTIGATOR_SYSTEM_PROMPT
+    from app.agent.single_shot import SYSTEM_PROMPT
+
+    for prompt in (SYSTEM_PROMPT, INVESTIGATOR_SYSTEM_PROMPT):
+        assert UNTRUSTED_START in prompt
+        assert UNTRUSTED_END in prompt
+        assert "<</UNTRUSTED_DATA>>" not in prompt

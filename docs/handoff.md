@@ -42,9 +42,9 @@
 ### 第 1 步：M1 模拟器、只读工具契约与架构可视化（PR `#31`、`#32`）
 - **实际思路**：
   1. **为什么先做确定性 YAML 模拟器（`SimulatorTools`）**：真实生产环境故障不可复现、充满抖动，无法作为回归测试基准。通过 YAML 定义服务拓扑、时序指标点、日志行、变更记录、下游依赖状态与数据库连接池状态，可以让同一个故障场景在毫秒级被重放上千次。
-  2. **安全与防注入边界（`app/tools/safety.py`）**：日志和变更描述属于外部不可信数据（真实场景可能包含用户输入或 Prompt Injection，例如冻结集中的 `dns-injection`、`memory-injection`、`pool-injection`）。因此工具层在返回前统一做两件事：
+  2. **安全与防注入边界（`app/tools/redact.py`）**：日志和变更描述属于外部不可信数据（真实场景可能包含用户输入或 Prompt Injection，例如冻结集中的 `dns-injection`、`memory-injection`、`pool-injection`）。因此工具层在返回前统一做两件事：
      - 正则脱敏敏感凭据（Bearer Token、API Key、连接串密码）；
-     - 使用 `<<UNTRUSTED_DATA>>...<</UNTRUSTED_DATA>>` 包裹不可信文本，并在系统提示词中声明包裹内容仅作为观测数据、绝不作为指令执行。
+     - 使用 `<<UNTRUSTED_DATA>>...<<END_UNTRUSTED_DATA>>` 包裹不可信文本，并在系统提示词中声明包裹内容仅作为观测数据、绝不作为指令执行。
   3. **静态防作弊门禁（`app/eval/fairness.py`）**：使用 Python `ast` 静态扫描所有 Agent 与 LLM 适配器模块源码，一旦发现任何模块导入 `app.eval`、`simulator` 或源码字符串中出现 `"ground_truth"` / `"user_severity"`，测试直接失败。
   4. **M1 基线水位线**：M1 在 29 个冻结场景（20 个 `FAULT`、5 个 `NOT_A_FAULT`、4 个 `UNKNOWN`）上取得 **Top-1 = `0.65` (13/20)**、**Top-3 = `0.80` (16/20)**，为 M3 和 M4 留出了清晰的提升空间。
 
@@ -65,7 +65,7 @@
 ### 第 3 步：M3 单次调用 LLM 对照组（`#13` & `#27`，PR `#33`）
 - **核心定位**：M3 的任务是回答一个尖锐问题——**“如果不写 Agent 循环，直接用代码把所有服务的监控、日志、变更全抓下来塞给大模型，能做到多少分？它会在哪里失败？”**
 - **实际思路（`app/agent/single_shot.py`）**：
-  1. **代码全量盲扫（Code-Driven Topology Sweep）**：按场景已知服务列表，对每个服务固定调用 6 个指标 + `search_logs(min_level="ERROR")` + `get_service_status` + `get_recent_changes` + `get_dependency_health` + `query_db_health`（单服务 11 次工具调用，双服务 22 次，三服务 33 次，平均每次运行 **12.90 次**工具调用）。
+  1. **代码全量盲扫（Code-Driven Topology Sweep）**：按场景已知服务列表，对每个服务固定调用 6 个指标 + `search_logs(min_level="ERROR")` + `get_service_status` + `get_recent_changes` + `get_dependency_health` + `query_db_health`（单服务 11 次工具调用，双服务 22 次，三服务 33 次，平均每次运行 **13.28 次**工具调用）。
   2. **证据白名单与单次重试统计**：所有工具返回的 `evidence_keys` 汇总为 `allowed_evidence_keys`。若模型第一次输出包含非法 `evidence_key` 或 Schema 错误，触发最多 **1 次**重试。
   3. **严禁重写首次非法引用率**：我们在 `SingleShotResult` 中分别记录 `first_output_illegal_citation_rate`（首次输出的非法引用占比）与 `accepted_illegal_citation_rate`（最终采纳报告的非法引用占比，必须为 `0.0`）。即使重试成功，`first_output_illegal_citation_rate` 依然保留首次真实数值。
 - **M3 的实测表现与暴露出的 3 个本质缺陷（Top-1 = `0.85`，17/20）**：
@@ -93,7 +93,7 @@ M4 是整个平台的核心大脑。我们没有使用黑盒框架，而是手�
    - 在 `investigate()` 中，`ScenarioClock` 仅用于推导历史故障查询窗口（`default_window`），而 `WallClock` 专门用于计算 `wall_timeout_seconds`（默认 60s）与 `TraceEvent.created_at`。在单元测试中推进虚拟 `WallClock` 可精确触发 `TIMED_OUT`，而不会篡改历史查询时间窗。
 
 #### 4.2 为什么 M4 能在 `<= 8` 次工具调用内拿到 `Top-1 = 1.00`？（`app/llm/adapters/investigator_fake.py`）
-我们按照资深值班 SRE 的真实排查路径设计了按需决策树（平均每次运行仅需 **6.31 次**工具调用，最高 **8 次**，比 M3 减少 **51%** 工具调用）：
+我们按照资深值班 SRE 的真实排查路径设计了按需决策树（平均每次运行仅需 **6.17 次**工具调用，最高 **8 次**，比 M3 减少 **53.5%** 工具调用）：
 1. **第 1 步（看错误日志）**：先查故障服务 `search_logs(min_level="ERROR")`。
    - **动态翻页下钻（解决 `drilldown-truncated-dns`）**：若返回 `truncated=True` 且第 1 页无决定性故障特征词，立即取第 1 页最后一条日志时间戳 `+1s` 作为新起点，发起窄窗口 `search_logs`，仅用 3 次工具调用即捕获 `log:late_nxdomain`。
 2. **第 2 步（看错误率与监控可用性）**：查 `query_metrics(metric="error_rate")`。
@@ -168,7 +168,7 @@ PR `#37`、`#40`、`#42` 已完成工具链与契约注入，并在 GitHub Actio
    - 新增 `hypotheses`、`hypothesis_evidence`、`feedback`、`memory_items`、`memory_recalls` 五张持久化表。
    - 当 `append_event` 写入 `HYPOTHESIS_UPDATED` 事件时，在同一事务内自动同步 `HypothesisRow` 状态流转与 `HypothesisEvidenceRow` 证据关联。
 2. **写入脱敏、可配置去重与混合检索（`app/memory/`）**：
-   - **脱敏**：所有写入 `MemoryItem` 的 `summary` 与 `content` 强制经过 `app/tools/safety.py` 的 `redact_text` 过滤（移除密钥、Token、邮箱，并将内网 IP 映射为 `<ip-N>` 伪名）。
+   - **脱敏**：所有写入 `MemoryItem` 的 `summary` 与 `content` 强制经过 `app/tools/redact.py` 的 `redact_text` 过滤（移除密钥、Token、邮箱，并将内网 IP 映射为 `<ip-N>` 伪名）。
    - **可配置去重**：基于确定性 64 维特征哈希 L2 归一化向量与词集 Jaccard 的混合文本相似度，当同一 `(layer, service, category, service_version)` 下相似度 `>= similarity_dedup_threshold`（默认 `0.85`）时合并条目并递增 `usage_count`。
    - **混合排序（`app/memory/retrieval.py`）**：综合 `0.65 * vector_cosine + 0.35 * BM25`、`exp(-age_days / half_life_days)` 时间衰减、信任权重（`CONFIRMED = 1.0`, `CANDIDATE = 0.65`, `QUARANTINED = 0.0`）以及 `service_version` / `valid_until` 版本新鲜度权重（版本不匹配或过期标记 `stale=True`，权重降为 `0.35`）。
 3. **仅按实际引用流转的反馈信任状态机（`POST /v1/runs/{run_id}/feedback`）**：

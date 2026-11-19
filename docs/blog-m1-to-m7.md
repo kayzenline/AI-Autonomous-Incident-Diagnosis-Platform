@@ -34,7 +34,7 @@
 ```mermaid
 flowchart LR
     M1["M1: 冻结场景集 + 规则基线<br/>Top-1: 0.6500"] --> M2["M2: 异步 Run + SSE + Postgres<br/>端到端持久化与重启语义"]
-    M2 --> M3["M3: 单轮全扫 LLM 基线<br/>Top-1: 0.8500 (12.90 calls)"]
+    M2 --> M3["M3: 单轮全扫 LLM 基线<br/>Top-1: 0.8500 (13.28 calls)"]
     M3 --> M4["M4: 多步调查循环 + Verifier<br/>离线 Top-1: 1.0000 (6.17 calls)"]
     M4 --> M5["M5: 真实 DeepSeek 实测 + OTel<br/>修复契约: 完成率 9.2% -> 100%"]
     M5 --> M6["M6: 双层记忆 + 线上 54 次消融<br/>m6-v1 Top-1: 0.5000 -> 1.0000"]
@@ -46,7 +46,7 @@ flowchart LR
 - **为什么要先做 M1？**
   很多 Agent 项目没有非 LLM 基线，导致写了几千行 Prompt 后，根本不知道这题是不是几个 `if/else` 阈值规则就能拿到 85% 分数。
 - **我们做了什么**：
-  1. **六边形只读工具端口（[`app/tools/port.py`](../app/tools/port.py)）**：定义 6 个严格只读工具（`query_metrics`、`search_logs`、`get_service_status`、`get_recent_changes`、`get_dependency_health`、`query_db_health`）。所有日志输出经过 [`app/tools/safety.py`](../app/tools/safety.py) 自动脱敏（剥离密钥、Token、邮箱，将内网 IP 映射为一致的 `<ip-1>` 伪名）并包裹在 `<untrusted_data>` 标签中，防止日志注入（Prompt Injection）。
+  1. **六边形只读工具端口（[`app/tools/port.py`](../app/tools/port.py)）**：定义 6 个严格只读工具（`query_metrics`、`search_logs`、`get_service_status`、`get_recent_changes`、`get_dependency_health`、`query_db_health`）。所有日志输出经过 [`app/tools/redact.py`](../app/tools/redact.py) 自动脱敏（剥离密钥、Token、邮箱，将内网 IP 映射为一致的 `<ip-1>` 伪名）并包裹在 `<<UNTRUSTED_DATA>>` 标记中，防止日志注入（Prompt Injection）。
   2. **29 个冻结评测场景（`scenarios/frozen/*.yaml`）**：覆盖 8 类根因与 3 类结论（`FAULT`、`NOT_A_FAULT`、`UNKNOWN`）。为了考验真正的多步推理，场景集中专门设计了：
      - **红鲱鱼干扰场景**（如 `cpu-with-disk-herring`、`db-pool-with-cpu-herring`）：次要指标越界，但日志证据指向另一根因；
      - **跨服务多跳场景**（如 `multihop-checkout-payments-pool`、`multihop-checkout-pricing-dns`）：告警在入口 `checkout`，但根因在下游一跳或二跳依赖；
@@ -81,7 +81,7 @@ flowchart LR
   2. **代码全拓扑扫描 + 证据账本门禁**：代码对 `scenario.world.services` 中的每个服务依次执行 6 项指标与默认日志查询，汇总成一张证据账本（Evidence Ledger）交给 `LLMPort`。若模型返回的 `DiagnosisReport` 引用了账本之外的 `evidence_key`，系统自动记录 `first_output_illegal_citation_rate` 并触发一次重试纠偏；重试仍含非法引用则直接拒绝采纳。
 - **M3 的得失**：
   - 离线基线 `Top-1` 从 M1 的 `0.6500` 跃升至 **`0.8500`（`+0.2000`）**，`Top-3` 达到 **`0.9500`**；
-  - 但代价是**工具调用暴涨到平均 `12.90` 次/Run（多服务拓扑下高达 `33` 次/Run）**，且在需要缩小时间窗才能避开 20 行日志截断的 `drilldown-truncated-dns` 上依然无能为力。
+  - 但代价是**工具调用暴涨到平均 `13.28` 次/Run（多服务拓扑下高达 `33` 次/Run）**，且在需要缩小时间窗才能避开 20 行日志截断的 `drilldown-truncated-dns` 上依然无能为力。
 
 ---
 
@@ -98,7 +98,7 @@ flowchart LR
      - 将 29 个场景的多轮交互录制到 [`evals/cassettes/m4-frozen.json`](../evals/cassettes/m4-frozen.json)，让 PR CI 在无需外部 API Key 的情况下，100% 跑通真实的 `investigate()` 编排、JSON 解析、账本写入和 Verifier 校验。
   3. **面向值班 SRE 的 `inspect` CLI**：
      - 提供 `python -m app.eval inspect <scenario_id> --mode m4`，在终端直观打印出每一步时间线、证据账本、假设流转和预算消耗。
-- **M4 离线验证结果**：在 29 个场景上达到 **`Top-1 = 1.0000`**（较 M3 `+0.1500`），同时平均工具调用从 `12.90` 次降至 **`6.17` 次（减少 52.2%）**。
+- **M4 离线验证结果**：在 29 个场景上达到 **`Top-1 = 1.0000`**（较 M3 `+0.1500`），同时平均工具调用从 `13.28` 次降至 **`6.17` 次（减少 53.5%）**。
 
 ---
 
@@ -115,7 +115,7 @@ flowchart LR
   - 修复方法非常干净：在不泄露任何场景提示或 `ground_truth` 的前提下，将公共工具目录 Schema 与报告契约 Schema 注入调查提示词，并启用 JSON Mode。
 - **修复后的 29 场景完整无记忆实测（[`2026-10-30-deepseek-repaired.json`](../evals/measurements/2026-10-30-deepseek-repaired.json)，Run `40988173433`）**：
   - **M4 完成率从 `8/87 (9.2%)` 直接提升至 `87/87 (100.0%)`**，最终采纳非法引用率保持 **`0.0000`**；
-  - M4 平均工具调用仅 **`6.69` 次**（较 M3 的 `12.90` 次减少 **48.1%**），严重度定级准确率达到 **`0.8333`**（较 M3 的 `0.6333` 提升 **`+20.0` 个百分点**），并在 M3 得分为 `0/3` 的 `drilldown-truncated-dns` 与 `dependency-with-cpu-herring` 上通过多步缩窗成功追回命例！
+  - M4 平均工具调用仅 **`6.74` 次**（较 M3 的 `13.28` 次减少 **49.3%**），严重度定级准确率达到 **`0.8333`**（较 M3 的 `0.6333` 提升 **`+20.0` 个百分点**），并在 M3 得分为 `0/3` 的 `drilldown-truncated-dns` 与 `dependency-with-cpu-herring` 上通过多步缩窗成功追回命例！
   - **诚实面对差距**：无记忆 M4 的 `Top-1 = 0.7333` 仍低于代码预先扫全拓扑的 M3（`0.8500`）。逐例分析发现，差距集中在 3 个跨服务连接池场景：M3 用代码强行扫遍所有服务（花掉 22–33 次调用），而无记忆 M4 把 7–8 次调用预算花在了入口服务 `checkout` 的本地指标上，停在了第一跳 `dependency_timeout`。这直接引出了 **M6 历史情景记忆/服务知识库** 与 **非 Holdout 多跳下钻引导** 的研发目标。
 
 ---
@@ -167,9 +167,9 @@ flowchart LR
 
 | 里程碑与模式 | Agent 标识 | FAULT Top-1 | FAULT Top-3 | Evidence Recall | Evidence Precision | 结论分类准确率 (`FAULT` / `NOT_A_FAULT` / `UNKNOWN`) | 平均工具调用 (上限) | 采纳非法引用率 | 归档基线文件 |
 | :--- | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :--- |
-| **M1 规则基线** | `rule-baseline` | `0.6500` | `0.8000` | `0.8000` | `0.6627` | `0.90` / `0.80` / `1.00` | `6.00` (`6`) | `0.0000` | [`m1-rule.json`](../evals/baselines/m1-rule.json) |
-| **M3 单轮全扫 LLM** | `single-shot-llm` | `0.8500` (`+0.2000`) | `0.9500` (`+0.1500`) | `0.9500` | `0.8167` | `0.95` / `1.00` / `1.00` | `12.90` (`33`) | `0.0000` | [`m3-single-shot.json`](../evals/baselines/m3-single-shot.json), [`m3-vs-m1.json`](../evals/baselines/m3-vs-m1.json) |
-| **M4 手写多步调查循环** | `investigation-loop` | **`1.0000`** (`+0.1500`) | **`1.0000`** (`+0.0500`) | **`1.0000`** | **`1.0000`** | `1.00` / `1.00` / `1.00` | **`6.17`** (`8`, **-52.2%**) | `0.0000` | [`m4-agent.json`](../evals/baselines/m4-agent.json), [`m4-vs-m3.json`](../evals/baselines/m4-vs-m3.json) |
+| **M1 规则基线** | `rule-baseline` | `0.6500` | `0.8000` | `0.8000` | `0.6627` | `0.90` / `0.80` / `1.00` | `11.00` (`11`) | `0.0000` | [`m1-rule.json`](../evals/baselines/m1-rule.json) |
+| **M3 单轮全扫 LLM** | `single-shot-llm` | `0.8500` (`+0.2000`) | `0.9500` (`+0.1500`) | `0.9500` | `0.8167` | `0.95` / `1.00` / `1.00` | `13.28` (`33`) | `0.0000` | [`m3-single-shot.json`](../evals/baselines/m3-single-shot.json), [`m3-vs-m1.json`](../evals/baselines/m3-vs-m1.json) |
+| **M4 手写多步调查循环** | `investigation-loop` | **`1.0000`** (`+0.1500`) | **`1.0000`** (`+0.0500`) | **`1.0000`** | **`1.0000`** | `1.00` / `1.00` / `1.00` | **`6.17`** (`8`, **-53.5%**) | `0.0000` | [`m4-agent.json`](../evals/baselines/m4-agent.json), [`m4-vs-m3.json`](../evals/baselines/m4-vs-m3.json) |
 | **M7 LangGraph `StateGraph`** | `langgraph-investigator` | **`1.0000`** (`0.0000` vs M4) | **`1.0000`** (`0.0000` vs M4) | **`1.0000`** | **`1.0000`** | `1.00` / `1.00` / `1.00` | **`6.17`** (`8`, Verifier `0`) | `0.0000` | [`m7-langgraph.json`](../evals/baselines/m7-langgraph.json), [`m7-vs-m4.json`](../evals/baselines/m7-vs-m4.json) |
 
 ---
@@ -180,9 +180,9 @@ flowchart LR
 
 | 真实模型评测版本 (`deepseek-flash`, `k=3`) | 完成运行数 | FAULT Top-1 | FAULT Top-3 | Evidence Recall | Evidence Precision | FAULT 严重度准确率 | `agreement@3` | 平均工具调用 (上限) | 首次 / 最终采纳非法引用率 |
 | :--- | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-| **M4 契约修复前** (`2026-10-29` 初次实测) | `8 / 87` (`9.2%`) | `0.0000` | `0.0000` | `0.0000` | `0.0000` | `0.0000` | `0.0920` | `6.50` (`8`) | N/A / `0.0000` |
-| **M3 单轮全扫** (`2026-10-30` 全拓扑预扫) | `86 / 87` (`98.9%`) | `0.8500` | `0.9333` | `0.9333` | `0.7292` | `0.6333` | `0.9770` | `12.90` (`33`) | `0.0000` / **`0.0000`** |
-| **M4 无记忆多步调查** (`2026-10-30` 契约修复后) | **`87 / 87` (`100.0%`)** | `0.7333` | `0.7667` | `0.7472` | `0.6750` | **`0.8333` (`+0.2000`)** | `0.9425` | **`6.69` (`8`, -48.1%)** | `0.0230` / **`0.0000`** |
+| **M4 契约修复前** (`2026-10-29` 初次实测) | `8 / 87` (`9.2%`) | `0.0000` | `0.0000` | `0.0000` | `0.0000` | `0.0000` | `0.0920` | `6.99` (`8`) | N/A / `0.0000` |
+| **M3 单轮全扫** (`2026-10-30` 全拓扑预扫) | `86 / 87` (`98.9%`) | `0.8500` | `0.9333` | `0.9333` | `0.7292` | `0.6333` | `0.9770` | `13.28` (`33`) | `0.0000` / **`0.0000`** |
+| **M4 无记忆多步调查** (`2026-10-30` 契约修复后) | **`87 / 87` (`100.0%`)** | `0.7333` | `0.7667` | `0.7472` | `0.6750` | **`0.8333` (`+0.2000`)** | `0.9425` | **`6.74` (`8`, -49.3%)** | `0.0230` / **`0.0000`** |
 
 ---
 
